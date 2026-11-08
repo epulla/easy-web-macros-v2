@@ -155,6 +155,36 @@ function candidates(el: Element): Locator[] {
   return out;
 }
 
+// Position-based locators hit a neighbour once the target is gone, so they only
+// apply when nothing else was recorded (e.g. migrated v1 steps).
+export function findElement(locators: Locator[], doc: Document = document): Element | null {
+  const semantic = locators.filter((l) => l.kind !== 'css' && l.kind !== 'xpath');
+  for (const l of semantic.length ? semantic : locators) {
+    const found = match(doc, l);
+    if (found.length === 1) return found[0]!;
+  }
+  return null;
+}
+
+const isVisible = (el: Element) => el.checkVisibility({ visibilityProperty: true });
+const isEnabled = (el: Element) => !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true';
+
+export async function waitForElement(
+  locators: Locator[],
+  { doc = document, timeoutMs = 10_000 }: { doc?: Document; timeoutMs?: number } = {},
+): Promise<Element> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const el = findElement(locators, doc);
+    if (el && isVisible(el) && isEnabled(el)) return el;
+    if (Date.now() >= deadline) {
+      if (!el) throw new Error("Couldn't find this element on the page.");
+      throw new Error(isVisible(el) ? 'This element is turned off (disabled).' : 'This element is hidden.');
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+
 // Keeps only locators that point at exactly this element right now.
 export function captureLocators(el: Element, doc: Document = el.ownerDocument): Locator[] {
   return candidates(el).filter((l) => {

@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { captureLocators } from '../src/core/locator';
+import { captureLocators, waitForElement } from '../src/core/locator';
 import html from './fixtures/form.html?raw';
 
 const $ = (s: string) => document.querySelector(s)!;
+
+// jsdom has no layout; Chrome's checkVisibility is approximated by the `hidden` attribute.
+Element.prototype.checkVisibility = function (this: Element) {
+  return !this.closest('[hidden]');
+};
 
 beforeEach(() => {
   document.body.innerHTML = html;
@@ -42,5 +47,43 @@ describe('captureLocators', () => {
   it('drops locators that match more than one element', () => {
     const locators = captureLocators($('div > span'));
     expect(locators.map((l) => l.kind)).toEqual(['css', 'xpath']);
+  });
+});
+
+describe('waitForElement', () => {
+  it('still finds the button after its id, class and test id change', async () => {
+    const locators = captureLocators($('#submit-btn'));
+    const button = $('#submit-btn');
+    button.id = 'new-id';
+    button.className = 'x';
+    button.removeAttribute('data-testid');
+    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(button);
+  });
+
+  it('uses an xpath when it is the only locator (migrated v1 step)', async () => {
+    const locators = [{ kind: 'xpath' as const, value: '/html/body/main/a' }];
+    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe($('a'));
+  });
+
+  it('waits for an element that appears and becomes enabled later', async () => {
+    const locators = captureLocators($('#submit-btn'));
+    const button = $('#submit-btn') as HTMLButtonElement;
+    button.remove();
+    setTimeout(() => {
+      button.disabled = true;
+      $('form').append(button);
+    }, 150);
+    setTimeout(() => (button.disabled = false), 300);
+    await expect(waitForElement(locators, { timeoutMs: 1000 })).resolves.toBe(button);
+  });
+
+  it.each([
+    ['missing', (b: HTMLButtonElement) => b.remove(), "Couldn't find this element on the page."],
+    ['hidden', (b: HTMLButtonElement) => (b.hidden = true), 'This element is hidden.'],
+    ['disabled', (b: HTMLButtonElement) => (b.disabled = true), 'This element is turned off (disabled).'],
+  ])('fails after the timeout when %s', async (_, change, message) => {
+    const locators = captureLocators($('#submit-btn'));
+    change($('#submit-btn') as HTMLButtonElement);
+    await expect(waitForElement(locators, { timeoutMs: 200 })).rejects.toThrow(message);
   });
 });
