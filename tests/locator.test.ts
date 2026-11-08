@@ -87,3 +87,30 @@ describe('waitForElement', () => {
     await expect(waitForElement(locators, { timeoutMs: 200 })).rejects.toThrow(message);
   });
 });
+
+describe('frames and shadow DOM', () => {
+  it('captures and finds a button inside an open shadow root', async () => {
+    const host = document.createElement('x-widget');
+    host.attachShadow({ mode: 'open' }).innerHTML = '<div><button id="go">Go</button></div>';
+    document.body.append(host);
+    const button = host.shadowRoot!.querySelector('button')!;
+
+    const locators = captureLocators(button);
+    expect(locators).toContainEqual({ kind: 'xpath', value: './div/button' });
+    button.id = 'changed';
+    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(button);
+  });
+
+  it('captures and finds an input inside a same-origin iframe', async () => {
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    (frame.contentWindow as typeof window).Element.prototype.checkVisibility = Element.prototype.checkVisibility;
+    frame.contentDocument!.body.innerHTML = '<label>City <input id="city"></label>';
+    const input = frame.contentDocument!.querySelector('input')!;
+
+    const locators = captureLocators(input);
+    expect(locators).toContainEqual({ kind: 'label', value: 'label City' });
+    input.id = 'changed';
+    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(input);
+  });
+});

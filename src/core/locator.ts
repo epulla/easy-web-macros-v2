@@ -99,11 +99,37 @@ function matchIn(root: Root, { kind, value }: Locator): Element[] {
   }
 }
 
-export function roots(doc: Document): Root[] {
-  return [doc];
+// The document plus every open shadow root and same-origin frame inside it.
+function roots(doc: Document): Root[] {
+  const out: Root[] = [];
+  const visit = (root: Root) => {
+    out.push(root);
+    for (const el of root.querySelectorAll('*')) {
+      if (el.shadowRoot) visit(el.shadowRoot);
+      if (el.tagName === 'IFRAME' || el.tagName === 'FRAME') {
+        let frameDoc: Document | null = null;
+        try {
+          frameDoc = (el as HTMLIFrameElement).contentDocument;
+        } catch {
+          // cross-origin frame
+        }
+        if (frameDoc) visit(frameDoc);
+      }
+    }
+  };
+  visit(doc);
+  return out;
 }
 
-export function match(doc: Document, locator: Locator): Element[] {
+function topDocument(el: Element): Document {
+  try {
+    return el.ownerDocument.defaultView?.top?.document ?? el.ownerDocument;
+  } catch {
+    return el.ownerDocument;
+  }
+}
+
+function match(doc: Document, locator: Locator): Element[] {
   return [...new Set(roots(doc).flatMap((root) => matchIn(root, locator)))];
 }
 
@@ -186,7 +212,7 @@ export async function waitForElement(
 }
 
 // Keeps only locators that point at exactly this element right now.
-export function captureLocators(el: Element, doc: Document = el.ownerDocument): Locator[] {
+export function captureLocators(el: Element, doc: Document = topDocument(el)): Locator[] {
   return candidates(el).filter((l) => {
     const found = match(doc, l);
     return found.length === 1 && found[0] === el;
