@@ -24,6 +24,9 @@ describe('importMacro', () => {
     ['unrelated JSON', '{"foo":1}', "This file isn't a macro file."],
     ['bad v2 step', JSON.stringify({ version: 2, macro: { ...login, steps: [{ id: 's', label: '', locators: [], action: 'type' }] } }), "This macro file is damaged and can't be imported."],
     ['bad v1 step', JSON.stringify({ name: 'x', steps: [{ id: 's', strategy: 'Goto' }], delayBetweenSteps: 1 }), "This macro file is damaged and can't be imported."],
+    ['v1 numeric value', JSON.stringify({ name: 'x', steps: [{ id: 's', strategy: 'InputSendKeys', value: 42 }], delayBetweenSteps: 1 }), "This macro file is damaged and can't be imported."],
+    ['v1 bad visibility', JSON.stringify({ name: 'x', steps: [{ id: 's', strategy: 'InputSendKeys', visibility: 'secret' }], delayBetweenSteps: 1 }), "This macro file is damaged and can't be imported."],
+    ['v1 bad delay', JSON.stringify({ name: 'x', steps: [], delayBetweenSteps: '1' }), "This macro file is damaged and can't be imported."],
   ])('rejects %s', (_, text, message) => {
     expect(() => importMacro(text)).toThrow(message);
   });

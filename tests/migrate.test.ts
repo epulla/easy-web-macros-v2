@@ -42,8 +42,29 @@ describe('migrate', () => {
     expect(macros[2]?.steps).toEqual([]);
   });
 
-  it('rejects unknown v1 step types', () => {
-    const bad = { x: { id: 'x', name: 'x', steps: [{ id: 's', strategy: 'Goto' }] } };
-    expect(() => migrate(bad as never)).toThrow('Unknown v1 step type: Goto');
+  it('defaults omitted optional v1 fields', () => {
+    const [macro] = migrate({ x: { id: 'x', name: 'x', steps: [{ id: 's', strategy: 'InputSendKeys' }] } } as never);
+    expect(macro).toEqual({
+      id: 'x', name: 'x', delayMs: 1000, runs: 1, loop: false,
+      steps: [{ id: 's', action: 'type', label: '', value: '', secret: false, locators: [] }],
+    });
+  });
+
+  it.each([
+    ['unknown step type', { strategy: 'Goto' }, 'Unknown v1 step type: Goto'],
+    ['numeric value', { strategy: 'InputSendKeys', value: 42 }, 'Invalid v1 value'],
+    ['bad visibility', { strategy: 'InputSendKeys', visibility: 'secret' }, 'Invalid v1 visibility'],
+    ['non-string xpath', { strategy: 'ButtonClick', xpath: 1 }, 'Invalid v1 xpath'],
+    ['non-string label', { strategy: 'AClick', label: null }, 'Invalid v1 label'],
+  ])('rejects %s', (_, step, message) => {
+    expect(() => migrate({ x: { id: 'x', name: 'x', steps: [{ id: 's', ...step }] } } as never)).toThrow(message);
+  });
+
+  it.each([
+    ['delay', { delayBetweenSteps: '1000' }],
+    ['number of runs', { numberOfRuns: null }],
+    ['loop setting', { doesLoopInfinitely: 'yes' }],
+  ])('rejects invalid %s', (field, settings) => {
+    expect(() => migrate({ x: { id: 'x', name: 'x', steps: [], ...settings } } as never)).toThrow(`Invalid v1 ${field}`);
   });
 });

@@ -50,37 +50,49 @@ export interface V1Collection {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isString = (v: unknown): v is string => typeof v === 'string';
+const isBoolean = (v: unknown): v is boolean => typeof v === 'boolean';
+const isVisibility = (v: unknown): v is V1Step['visibility'] => v === 'visible' || v === 'hidden';
+
+// Omitted v1 fields get defaults; present but wrong-typed ones mean damaged data.
+function optional<T>(v: unknown, ok: (v: unknown) => v is T, fallback: T, field: string): T {
+  if (v === undefined) return fallback;
+  if (!ok(v)) throw new Error(`Invalid v1 ${field}`);
+  return v;
+}
 
 function fromV1Step(s: V1Step): Step {
-  if (!isObject(s) || typeof s.id !== 'string') throw new Error('Invalid v1 step');
+  if (!isObject(s) || !isString(s.id)) throw new Error('Invalid v1 step');
+  const xpath = optional(s.xpath, isString, '', 'xpath');
+  const secret = optional(s.visibility, isVisibility, 'visible', 'visibility') === 'hidden';
   const base = {
     id: s.id,
-    label: typeof s.label === 'string' ? s.label : '',
-    locators: typeof s.xpath === 'string' && s.xpath ? [{ kind: 'xpath' as const, value: s.xpath }] : [],
+    label: optional(s.label, isString, '', 'label'),
+    locators: xpath ? [{ kind: 'xpath' as const, value: xpath }] : [],
   };
   if (s.strategy === 'ButtonClick' || s.strategy === 'AClick') return { ...base, action: 'click' };
   if (s.strategy === 'InputSendKeys') {
     return {
       ...base,
       action: 'type',
-      value: typeof s.value === 'string' ? s.value : '',
-      secret: s.visibility === 'hidden',
+      value: optional(s.value, isString, '', 'value'),
+      secret,
     };
   }
   throw new Error(`Unknown v1 step type: ${String(s.strategy)}`);
 }
 
 export function fromV1(c: V1Collection): Macro {
-  if (!isObject(c) || typeof c.name !== 'string' || !Array.isArray(c.steps)) {
+  if (!isObject(c) || !isString(c.name) || !Array.isArray(c.steps)) {
     throw new Error('Invalid v1 collection');
   }
   return {
-    id: typeof c.id === 'string' && c.id ? c.id : crypto.randomUUID(),
+    id: optional(c.id, isString, '', 'id') || crypto.randomUUID(),
     name: c.name,
     steps: c.steps.map(fromV1Step),
-    delayMs: isNumber(c.delayBetweenSteps) ? c.delayBetweenSteps : DEFAULTS.delayMs,
-    runs: isNumber(c.numberOfRuns) ? c.numberOfRuns : DEFAULTS.runs,
-    loop: typeof c.doesLoopInfinitely === 'boolean' ? c.doesLoopInfinitely : DEFAULTS.loop,
+    delayMs: optional(c.delayBetweenSteps, isNumber, DEFAULTS.delayMs, 'delay'),
+    runs: optional(c.numberOfRuns, isNumber, DEFAULTS.runs, 'number of runs'),
+    loop: optional(c.doesLoopInfinitely, isBoolean, DEFAULTS.loop, 'loop setting'),
   };
 }
 

@@ -25,7 +25,7 @@ describe('macros storage', () => {
   });
 
   it('leaves v1 data untouched if migration fails', async () => {
-    const broken = { collections: { x: { id: 'x', name: 'x', steps: [{ id: 's', strategy: 'Goto' }] } } };
+    const broken = { collections: { x: { id: 'x', name: 'x', steps: [{ id: 's', strategy: 'InputSendKeys', value: 42 }] } } };
     await fakeBrowser.storage.local.set(broken);
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { macros } = await loadState();
