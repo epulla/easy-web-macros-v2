@@ -96,8 +96,15 @@ export function fromV1(c: V1Collection): Macro {
   };
 }
 
+// Skips invalid collections; the caller keeps the raw v1 data, so nothing is lost.
 export function migrate(collections: Record<string, V1Collection>): Macro[] {
-  return Object.values(collections).map(fromV1);
+  return Object.values(collections).flatMap((c) => {
+    try {
+      return [fromV1(c)];
+    } catch {
+      return [];
+    }
+  });
 }
 
 function isStep(s: unknown): s is Step {

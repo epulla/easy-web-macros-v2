@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrate } from '../src/core/macro';
+import { fromV1, migrate } from '../src/core/macro';
 import v1 from './fixtures/v1-storage.json';
 
 describe('migrate', () => {
@@ -57,7 +57,7 @@ describe('migrate', () => {
     ['non-string xpath', { strategy: 'ButtonClick', xpath: 1 }, 'Invalid v1 xpath'],
     ['non-string label', { strategy: 'AClick', label: null }, 'Invalid v1 label'],
   ])('rejects %s', (_, step, message) => {
-    expect(() => migrate({ x: { id: 'x', name: 'x', steps: [{ id: 's', ...step }] } } as never)).toThrow(message);
+    expect(() => fromV1({ id: 'x', name: 'x', steps: [{ id: 's', ...step }] } as never)).toThrow(message);
   });
 
   it.each([
@@ -65,6 +65,6 @@ describe('migrate', () => {
     ['number of runs', { numberOfRuns: null }],
     ['loop setting', { doesLoopInfinitely: 'yes' }],
   ])('rejects invalid %s', (field, settings) => {
-    expect(() => migrate({ x: { id: 'x', name: 'x', steps: [], ...settings } } as never)).toThrow(`Invalid v1 ${field}`);
+    expect(() => fromV1({ id: 'x', name: 'x', steps: [], ...settings } as never)).toThrow(`Invalid v1 ${field}`);
   });
 });
