@@ -44,6 +44,11 @@ describe('captureLocators', () => {
     expect(locators).toContainEqual({ kind: 'role', value: 'textbox Password' });
   });
 
+  it('captures other stable data attributes but skips hashed ones', () => {
+    document.body.innerHTML = '<button data-action="save" data-v-7ba5bd90="">Save</button>';
+    expect(captureLocators($('button'))[0]).toEqual({ kind: 'testId', value: '[data-action="save"]' });
+  });
+
   it('drops locators that match more than one element', () => {
     const locators = captureLocators($('div > span'));
     expect(locators.map((l) => l.kind)).toEqual(['css', 'xpath']);
@@ -58,6 +63,29 @@ describe('waitForElement', () => {
     button.className = 'x';
     button.removeAttribute('data-testid');
     await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(button);
+  });
+
+  it('still finds the button after its text and id change if a data attribute stays', async () => {
+    document.body.innerHTML = '<button id="a" data-action="save">Save</button>';
+    const locators = captureLocators($('button'));
+    $('button').textContent = 'Store';
+    $('button').id = 'b';
+    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe($('button'));
+  });
+
+  it('ignores hidden text when matching by name', async () => {
+    document.body.innerHTML = '<p><button>Save <span hidden>old</span></button></p>';
+    const locators = captureLocators($('button'));
+    expect(locators).toContainEqual({ kind: 'role', value: 'button Save' });
+    $('span').textContent = 'new';
+    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe($('button'));
+  });
+
+  it('waits while a parent marks the element disabled', async () => {
+    const locators = captureLocators($('#submit-btn'));
+    $('form').setAttribute('aria-disabled', 'true');
+    setTimeout(() => $('form').removeAttribute('aria-disabled'), 150);
+    await expect(waitForElement(locators, { timeoutMs: 1000 })).resolves.toBe($('#submit-btn'));
   });
 
   it('uses an xpath when it is the only locator (migrated v1 step)', async () => {
@@ -81,6 +109,12 @@ describe('waitForElement', () => {
     ['missing', (b: HTMLButtonElement) => b.remove(), "Couldn't find this element on the page."],
     ['hidden', (b: HTMLButtonElement) => (b.hidden = true), 'This element is hidden.'],
     ['disabled', (b: HTMLButtonElement) => (b.disabled = true), 'This element is turned off (disabled).'],
+    ['disabled by a shadow host', (b: HTMLButtonElement) => {
+      const host = document.createElement('div');
+      host.setAttribute('aria-disabled', 'true');
+      host.attachShadow({ mode: 'open' }).append(b);
+      document.body.append(host);
+    }, 'This element is turned off (disabled).'],
   ])('fails after the timeout when %s', async (_, change, message) => {
     const locators = captureLocators($('#submit-btn'));
     change($('#submit-btn') as HTMLButtonElement);
@@ -96,7 +130,7 @@ describe('frames and shadow DOM', () => {
     const button = host.shadowRoot!.querySelector('button')!;
 
     const locators = captureLocators(button);
-    expect(locators).toContainEqual({ kind: 'xpath', value: './div/button' });
+    expect(locators.map((l) => l.kind)).not.toContain('xpath');
     button.id = 'changed';
     await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(button);
   });

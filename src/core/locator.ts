@@ -20,8 +20,8 @@ const MAX_TEXT = 80;
 
 const clean = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
 const attr = (name: string, value: string) => `[${name}="${value.replace(/["\\]/g, '\\$&')}"]`;
-// Framework-generated ids/classes (":r1:", "ember123", "css-1x2y3z") change between page loads.
-const looksGenerated = (s: string) => /^:|\d{3,}|^(css|sc|jsx|emotion)-/.test(s);
+// Framework-generated ids/attrs (":r1:", "ember123", "css-1x2y3z", "data-v-7ba5bd90") change between builds.
+const looksGenerated = (s: string) => /^:|\d{3,}|^(css|sc|jsx|emotion)-|(?=[a-f]*\d)[0-9a-f]{6,}/i.test(s);
 const split = (value: string): [string, string] => {
   const i = value.indexOf(' ');
   return i < 0 ? [value, ''] : [value.slice(0, i), value.slice(i + 1)];
@@ -34,8 +34,27 @@ function roleOf(el: Element): string {
   return Object.keys(IMPLICIT_ROLES).find((r) => el.matches(IMPLICIT_ROLES[r]!)) ?? '';
 }
 
+function isRendered(el: Element): boolean {
+  if (el.matches('[hidden],[aria-hidden=true],script,style,template')) return false;
+  const style = el.ownerDocument.defaultView?.getComputedStyle(el);
+  return style?.display !== 'none' && style?.visibility !== 'hidden';
+}
+
+// Like textContent, minus hidden descendants, so hidden text changes don't break matches.
+function visibleText(el: Element): string {
+  const parts: string[] = [];
+  const walk = (node: Node) => {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) parts.push(child.textContent ?? '');
+      else if (child.nodeType === 1 && isRendered(child as Element)) walk(child);
+    }
+  };
+  walk(el);
+  return clean(parts.join(''));
+}
+
 const labelText = (el: Element) =>
-  clean(Array.from((el as HTMLInputElement).labels ?? [], (l) => l.textContent).join(' '));
+  clean(Array.from((el as HTMLInputElement).labels ?? [], visibleText).join(' '));
 
 function nameOf(el: Element): string {
   const root = el.getRootNode() as Root;
@@ -48,7 +67,7 @@ function nameOf(el: Element): string {
     clean(el.getAttribute('aria-label')) ||
     labelText(el) ||
     clean(el.getAttribute('alt')) ||
-    (NAME_FROM_CONTENT.has(roleOf(el)) ? clean(el.textContent) : '') ||
+    (NAME_FROM_CONTENT.has(roleOf(el)) ? visibleText(el) : '') ||
     (el.matches('input[type=button],input[type=submit],input[type=reset]') ? clean((el as HTMLInputElement).value) : '');
   return name || clean(el.getAttribute('title')) || clean(el.getAttribute('placeholder'));
 }
@@ -87,7 +106,7 @@ function matchIn(root: Root, { kind, value }: Locator): Element[] {
     }
     case 'text': {
       const [t, text] = split(value);
-      return query(root, t).filter((el) => clean(el.textContent) === text);
+      return query(root, t).filter((el) => visibleText(el) === text);
     }
     case 'label': {
       const [how, text] = split(value);
@@ -95,7 +114,7 @@ function matchIn(root: Root, { kind, value }: Locator): Element[] {
       return query(root, 'input,select,textarea').filter((el) => labelText(el) === text);
     }
     case 'xpath':
-      return evaluateXPath(root, value);
+      return root.nodeType === 9 ? evaluateXPath(root, value) : [];
   }
 }
 
@@ -146,14 +165,13 @@ function cssPath(el: Element): string {
   return parts.join(' > ');
 }
 
-function xpathOf(el: Element, root: Root): string {
+function xpathOf(el: Element): string {
   const parts: string[] = [];
   for (let cur: Element | null = el; cur; cur = cur.parentElement) {
     const sameTag = cur.parentElement ? Array.from(cur.parentElement.children).filter((c) => c.tagName === cur!.tagName) : [];
     parts.unshift(sameTag.length > 1 ? `${tag(cur)}[${sameTag.indexOf(cur) + 1}]` : tag(cur));
-    if (cur.parentNode === root) break;
   }
-  return (root.nodeType === 9 ? '/' : './') + parts.join('/');
+  return '/' + parts.join('/');
 }
 
 // Most stable first: intentional test hooks, ids, then what the user sees, then structure.
@@ -163,6 +181,11 @@ function candidates(el: Element): Locator[] {
   for (const a of TEST_ID_ATTRS) {
     const v = el.getAttribute(a);
     if (v) out.push({ kind: 'testId', value: attr(a, v) });
+  }
+  for (const { name: a, value: v } of el.attributes) {
+    if (a.startsWith('data-') && !TEST_ID_ATTRS.includes(a) && v && v.length <= MAX_TEXT && !looksGenerated(a) && !looksGenerated(v)) {
+      out.push({ kind: 'testId', value: attr(a, v) });
+    }
   }
   if (el.id && !looksGenerated(el.id)) out.push({ kind: 'id', value: el.id });
   const role = roleOf(el);
@@ -174,10 +197,11 @@ function candidates(el: Element): Locator[] {
     const v = el.getAttribute(a);
     if (v) out.push({ kind: 'label', value: `${a} ${v}` });
   }
-  const text = clean(el.textContent);
+  const text = visibleText(el);
   if (text && text.length <= MAX_TEXT) out.push({ kind: 'text', value: `${tag(el)} ${text}` });
   out.push({ kind: 'css', value: cssPath(el) });
-  out.push({ kind: 'xpath', value: xpathOf(el, root) });
+  // Chrome can't evaluate XPath inside shadow roots.
+  if (root.nodeType === 9) out.push({ kind: 'xpath', value: xpathOf(el) });
   return out;
 }
 
@@ -193,7 +217,13 @@ export function findElement(locators: Locator[], doc: Document = document): Elem
 }
 
 const isVisible = (el: Element) => el.checkVisibility({ visibilityProperty: true });
-const isEnabled = (el: Element) => !el.matches(':disabled') && el.getAttribute('aria-disabled') !== 'true';
+function isEnabled(el: Element): boolean {
+  if (el.matches(':disabled')) return false;
+  for (let n: Element | null = el; n; n = n.parentElement ?? ((n.getRootNode() as ShadowRoot).host ?? null)) {
+    if (n.getAttribute('aria-disabled') === 'true') return false;
+  }
+  return true;
+}
 
 export async function waitForElement(
   locators: Locator[],
