@@ -23,6 +23,7 @@
     "@types/react-dom": "^19.2.3",
     "@webext-core/fake-browser": "^2.0.1",
     "@wxt-dev/module-react": "^1.1.5",
+    "jsdom": "^31.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^5.0.2",
