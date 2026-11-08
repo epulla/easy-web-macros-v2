@@ -24,7 +24,6 @@ pnpm dev
 pnpm compile
 pnpm test
 pnpm build
-pnpm build:firefox
 ```
 
 ## Privacy
