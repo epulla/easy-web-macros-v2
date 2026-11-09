@@ -119,7 +119,7 @@ function matchIn(root: Root, { kind, value }: Locator): Element[] {
 }
 
 // The document plus every open shadow root and same-origin frame inside it.
-function roots(doc: Document): Root[] {
+function roots(start: Root): Root[] {
   const out: Root[] = [];
   const visit = (root: Root) => {
     out.push(root);
@@ -136,20 +136,31 @@ function roots(doc: Document): Root[] {
       }
     }
   };
-  visit(doc);
+  visit(start);
   return out;
 }
 
-function topDocument(el: Element): Document {
+function innerRoot(host: Element): Root | null {
   try {
-    return el.ownerDocument.defaultView?.top?.document ?? el.ownerDocument;
+    return host.shadowRoot ?? (host as HTMLIFrameElement).contentDocument ?? null;
   } catch {
-    return el.ownerDocument;
+    return null;
   }
 }
 
-function match(doc: Document, locator: Locator): Element[] {
-  return [...new Set(roots(doc).flatMap((root) => matchIn(root, locator)))];
+// Shadow hosts and frames around el, outermost first.
+function hostsOf(el: Element): Element[] {
+  const hosts: Element[] = [];
+  for (let root = el.getRootNode() as Root; ; ) {
+    const host = root.nodeType === 9 ? (root as Document).defaultView?.frameElement : (root as ShadowRoot).host;
+    if (!host) return hosts;
+    hosts.unshift(host);
+    root = host.getRootNode() as Root;
+  }
+}
+
+function match(space: Root[], locator: Locator): Element[] {
+  return [...new Set(space.flatMap((root) => matchIn(root, locator)))];
 }
 
 function cssPath(el: Element): string {
@@ -207,13 +218,29 @@ function candidates(el: Element): Locator[] {
 
 // Position-based locators hit a neighbour once the target is gone, so they only
 // apply when nothing else was recorded (e.g. migrated v1 steps).
-export function findElement(locators: Locator[], doc: Document = document): Element | null {
+function resolve(locators: Locator[], space: Root[]): Element | null {
   const semantic = locators.filter((l) => l.kind !== 'css' && l.kind !== 'xpath');
   for (const l of semantic.length ? semantic : locators) {
-    const found = match(doc, l);
+    const found = match(space, l);
     if (found.length === 1) return found[0]!;
   }
   return null;
+}
+
+export interface Target {
+  locators: Locator[];
+  scope?: Locator[][];
+}
+
+export function findElement({ locators, scope = [] }: Target, doc: Document = document): Element | null {
+  let space = roots(doc);
+  for (const hostLocators of scope) {
+    const host = resolve(hostLocators, space);
+    const inner = host && innerRoot(host);
+    if (!inner) return null;
+    space = roots(inner);
+  }
+  return resolve(locators, space);
 }
 
 const isVisible = (el: Element) => el.checkVisibility({ visibilityProperty: true });
@@ -226,12 +253,12 @@ function isEnabled(el: Element): boolean {
 }
 
 export async function waitForElement(
-  locators: Locator[],
+  target: Target,
   { doc = document, timeoutMs = 10_000 }: { doc?: Document; timeoutMs?: number } = {},
 ): Promise<Element> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const el = findElement(locators, doc);
+    const el = findElement(target, doc);
     if (el && isVisible(el) && isEnabled(el)) return el;
     if (Date.now() >= deadline) {
       if (!el) throw new Error("Couldn't find this element on the page.");
@@ -241,10 +268,23 @@ export async function waitForElement(
   }
 }
 
-// Keeps only locators that point at exactly this element right now.
-export function captureLocators(el: Element, doc: Document = topDocument(el)): Locator[] {
-  return candidates(el).filter((l) => {
-    const found = match(doc, l);
+// Keeps only locators that point at exactly this element within space right now.
+const uniqueLocators = (el: Element, space: Root[]) =>
+  candidates(el).filter((l) => {
+    const found = match(space, l);
     return found.length === 1 && found[0] === el;
   });
+
+// Elements inside shadow DOM or frames also record how to find each host, so
+// identical widgets on one page stay distinguishable.
+export function captureTarget(el: Element): Target {
+  const hosts = hostsOf(el);
+  let space = roots((hosts[0] ?? el).ownerDocument);
+  const scope: Locator[][] = [];
+  for (const host of hosts) {
+    scope.push(uniqueLocators(host, space));
+    space = roots(innerRoot(host)!);
+  }
+  const locators = uniqueLocators(el, space);
+  return scope.length ? { locators, scope } : { locators };
 }

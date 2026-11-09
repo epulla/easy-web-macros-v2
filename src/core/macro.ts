@@ -10,6 +10,8 @@ interface StepBase {
   id: string;
   label: string;
   locators: Locator[];
+  // Locators for each shadow host / iframe around the target, outermost first.
+  scope?: Locator[][];
 }
 
 export type Step =
@@ -107,13 +109,14 @@ export function migrate(collections: Record<string, V1Collection>): Macro[] {
   });
 }
 
+const isLocators = (ls: unknown): ls is Locator[] =>
+  Array.isArray(ls) &&
+  ls.every((l) => isObject(l) && LOCATOR_KINDS.includes(l.kind as LocatorKind) && typeof l.value === 'string');
+
 function isStep(s: unknown): s is Step {
   if (!isObject(s) || typeof s.id !== 'string' || typeof s.label !== 'string') return false;
-  if (!Array.isArray(s.locators)) return false;
-  const locatorsOk = s.locators.every(
-    (l) => isObject(l) && LOCATOR_KINDS.includes(l.kind as LocatorKind) && typeof l.value === 'string',
-  );
-  if (!locatorsOk) return false;
+  if (!isLocators(s.locators)) return false;
+  if (s.scope !== undefined && !(Array.isArray(s.scope) && s.scope.every(isLocators))) return false;
   if (s.action === 'click') return true;
   return s.action === 'type' && typeof s.value === 'string' && typeof s.secret === 'boolean';
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { captureLocators, waitForElement } from '../src/core/locator';
+import { captureTarget, waitForElement } from '../src/core/locator';
 import html from './fixtures/form.html?raw';
 
 const $ = (s: string) => document.querySelector(s)!;
@@ -14,9 +14,9 @@ beforeEach(() => {
   document.body.innerHTML = html;
 });
 
-describe('captureLocators', () => {
+describe('captureTarget', () => {
   it('ranks test id, id, role, text, css and xpath for a button', () => {
-    expect(captureLocators($('[data-testid=login-submit]'))).toEqual([
+    expect(captureTarget($('[data-testid=login-submit]')).locators).toEqual([
       { kind: 'testId', value: '[data-testid="login-submit"]' },
       { kind: 'id', value: 'submit-btn' },
       { kind: 'role', value: 'button Sign in' },
@@ -27,7 +27,7 @@ describe('captureLocators', () => {
   });
 
   it('captures label, name and placeholder for an input', () => {
-    expect(captureLocators($('#email'))).toEqual([
+    expect(captureTarget($('#email')).locators).toEqual([
       { kind: 'id', value: 'email' },
       { kind: 'role', value: 'textbox Email address' },
       { kind: 'label', value: 'label Email address' },
@@ -39,62 +39,62 @@ describe('captureLocators', () => {
   });
 
   it('skips generated ids and uses aria-label as the name', () => {
-    const locators = captureLocators($('[name=password]'));
+    const locators = captureTarget($('[name=password]')).locators;
     expect(locators.map((l) => l.kind)).not.toContain('id');
     expect(locators).toContainEqual({ kind: 'role', value: 'textbox Password' });
   });
 
   it('captures other stable data attributes but skips hashed ones', () => {
     document.body.innerHTML = '<button data-action="save" data-v-7ba5bd90="">Save</button>';
-    expect(captureLocators($('button'))[0]).toEqual({ kind: 'testId', value: '[data-action="save"]' });
+    expect(captureTarget($('button')).locators[0]).toEqual({ kind: 'testId', value: '[data-action="save"]' });
   });
 
   it('drops locators that match more than one element', () => {
-    const locators = captureLocators($('div > span'));
+    const locators = captureTarget($('div > span')).locators;
     expect(locators.map((l) => l.kind)).toEqual(['css', 'xpath']);
   });
 });
 
 describe('waitForElement', () => {
   it('still finds the button after its id, class and test id change', async () => {
-    const locators = captureLocators($('#submit-btn'));
+    const locators = captureTarget($('#submit-btn')).locators;
     const button = $('#submit-btn');
     button.id = 'new-id';
     button.className = 'x';
     button.removeAttribute('data-testid');
-    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(button);
+    await expect(waitForElement({ locators }, { timeoutMs: 0 })).resolves.toBe(button);
   });
 
   it('still finds the button after its text and id change if a data attribute stays', async () => {
     document.body.innerHTML = '<button id="a" data-action="save">Save</button>';
-    const locators = captureLocators($('button'));
+    const locators = captureTarget($('button')).locators;
     $('button').textContent = 'Store';
     $('button').id = 'b';
-    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe($('button'));
+    await expect(waitForElement({ locators }, { timeoutMs: 0 })).resolves.toBe($('button'));
   });
 
   it('ignores hidden text when matching by name', async () => {
     document.body.innerHTML = '<p><button>Save <span hidden>old</span></button></p>';
-    const locators = captureLocators($('button'));
+    const locators = captureTarget($('button')).locators;
     expect(locators).toContainEqual({ kind: 'role', value: 'button Save' });
     $('span').textContent = 'new';
-    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe($('button'));
+    await expect(waitForElement({ locators }, { timeoutMs: 0 })).resolves.toBe($('button'));
   });
 
   it('waits while a parent marks the element disabled', async () => {
-    const locators = captureLocators($('#submit-btn'));
+    const locators = captureTarget($('#submit-btn')).locators;
     $('form').setAttribute('aria-disabled', 'true');
     setTimeout(() => $('form').removeAttribute('aria-disabled'), 150);
-    await expect(waitForElement(locators, { timeoutMs: 1000 })).resolves.toBe($('#submit-btn'));
+    await expect(waitForElement({ locators }, { timeoutMs: 1000 })).resolves.toBe($('#submit-btn'));
   });
 
   it('uses an xpath when it is the only locator (migrated v1 step)', async () => {
     const locators = [{ kind: 'xpath' as const, value: '/html/body/main/a' }];
-    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe($('a'));
+    await expect(waitForElement({ locators }, { timeoutMs: 0 })).resolves.toBe($('a'));
   });
 
   it('waits for an element that appears and becomes enabled later', async () => {
-    const locators = captureLocators($('#submit-btn'));
+    const locators = captureTarget($('#submit-btn')).locators;
     const button = $('#submit-btn') as HTMLButtonElement;
     button.remove();
     setTimeout(() => {
@@ -102,7 +102,7 @@ describe('waitForElement', () => {
       $('form').append(button);
     }, 150);
     setTimeout(() => (button.disabled = false), 300);
-    await expect(waitForElement(locators, { timeoutMs: 1000 })).resolves.toBe(button);
+    await expect(waitForElement({ locators }, { timeoutMs: 1000 })).resolves.toBe(button);
   });
 
   it.each([
@@ -116,9 +116,9 @@ describe('waitForElement', () => {
       document.body.append(host);
     }, 'This element is turned off (disabled).'],
   ])('fails after the timeout when %s', async (_, change, message) => {
-    const locators = captureLocators($('#submit-btn'));
+    const locators = captureTarget($('#submit-btn')).locators;
     change($('#submit-btn') as HTMLButtonElement);
-    await expect(waitForElement(locators, { timeoutMs: 200 })).rejects.toThrow(message);
+    await expect(waitForElement({ locators }, { timeoutMs: 200 })).rejects.toThrow(message);
   });
 });
 
@@ -129,10 +129,10 @@ describe('frames and shadow DOM', () => {
     document.body.append(host);
     const button = host.shadowRoot!.querySelector('button')!;
 
-    const locators = captureLocators(button);
-    expect(locators.map((l) => l.kind)).not.toContain('xpath');
+    const target = captureTarget(button);
+    expect(target.locators.map((l) => l.kind)).not.toContain('xpath');
     button.id = 'changed';
-    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(button);
+    await expect(waitForElement(target, { timeoutMs: 0 })).resolves.toBe(button);
   });
 
   it('captures and finds an input inside a same-origin iframe', async () => {
@@ -142,9 +142,22 @@ describe('frames and shadow DOM', () => {
     frame.contentDocument!.body.innerHTML = '<label>City <input id="city"></label>';
     const input = frame.contentDocument!.querySelector('input')!;
 
-    const locators = captureLocators(input);
-    expect(locators).toContainEqual({ kind: 'label', value: 'label City' });
+    const target = captureTarget(input);
+    expect(target.locators).toContainEqual({ kind: 'label', value: 'label City' });
     input.id = 'changed';
-    await expect(waitForElement(locators, { timeoutMs: 0 })).resolves.toBe(input);
+    await expect(waitForElement(target, { timeoutMs: 0 })).resolves.toBe(input);
+  });
+
+  it('tells apart identical widgets by their host', async () => {
+    document.body.innerHTML = '<x-card data-card="a"></x-card><x-card data-card="b"></x-card>';
+    for (const host of document.querySelectorAll('x-card')) {
+      host.attachShadow({ mode: 'open' }).innerHTML = '<button id="submit">Submit</button>';
+    }
+    const second = $('[data-card=b]').shadowRoot!.querySelector('button')!;
+
+    const target = captureTarget(second);
+    expect(target.scope).toEqual([expect.arrayContaining([{ kind: 'testId', value: '[data-card="b"]' }])]);
+    expect(target.locators).toContainEqual({ kind: 'id', value: 'submit' });
+    await expect(waitForElement(target, { timeoutMs: 0 })).resolves.toBe(second);
   });
 });
