@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { duplicateStep, moveStep, type Step } from '../src/core/macro';
+import { applyEdit, duplicateStep, moveStep, type Step } from '../src/core/macro';
 
 const steps: Step[] = ['a', 'b', 'c'].map((id) => ({ id, label: id, locators: [{ kind: 'id', value: id }], action: 'click' }));
 const ids = (s: Step[]) => s.map((x) => x.id);
@@ -18,10 +18,25 @@ describe('moveStep', () => {
 
 describe('duplicateStep', () => {
   it('inserts an independent copy with a new id after the original', () => {
-    const next = duplicateStep(steps, 0);
+    const next = duplicateStep(steps, 0, 'copy');
     expect(next.map((s) => s.label)).toEqual(['a', 'a', 'b', 'c']);
-    expect(next[1]!.id).not.toBe('a');
+    expect(next[1]!.id).toBe('copy');
     next[1]!.locators[0]!.value = 'changed';
     expect(steps[0]!.locators[0]!.value).toBe('a');
+  });
+});
+
+describe('applyEdit', () => {
+  const macro = { id: 'm', name: 'M', steps, delayMs: 0, runs: 1, loop: false };
+
+  it.each([
+    [{ type: 'move', stepId: 'a', to: 2 }, ['b', 'c', 'a']],
+    [{ type: 'duplicate', stepId: 'a', newId: 'a2' }, ['a', 'a2', 'b', 'c']],
+    [{ type: 'delete-step', stepId: 'b' }, ['a', 'c']],
+    [{ type: 'delete-step', stepId: 'gone' }, ['a', 'b', 'c']],
+  ] as const)('applies %o the same way when repeated', (edit, expected) => {
+    const once = applyEdit(macro, edit);
+    expect(ids(once.steps)).toEqual(expected);
+    expect(applyEdit(once, edit)).toEqual(once);
   });
 });

@@ -38,14 +38,31 @@ describe('macros storage', () => {
 describe('macro writes', () => {
   beforeEach(() => fakeBrowser.reset());
 
-  const macro = (id: string, name = id) => ({ id, name, steps: [], delayMs: 0, runs: 1, loop: false });
+  const step = { id: 's', label: 'Click Save', locators: [{ kind: 'text' as const, value: 'button Save' }], action: 'click' as const };
+  const macro = (id: string, name = id) => ({ id, name, steps: [step], delayMs: 1000, runs: 1, loop: false });
+  const repaired = [{ kind: 'id' as const, value: 'save' }];
 
-  it('keeps a recording saved while an edit is on its way, and never brings back a deleted macro', async () => {
-    const { macros, updateMacros, saveMacro, deleteMacro } = await loadState();
+  it('keeps a recording, a repaired step and a delay change from another tab when the editor renames', async () => {
+    const { macros, updateMacros, editMacro } = await loadState();
+    await macros.setValue([macro('a')]);
+
+    await Promise.all([
+      updateMacros((ms) => [...ms, macro('rec')]),
+      updateMacros((ms) => ms.map((m) => ({ ...m, steps: m.steps.map((s) => ({ ...s, locators: repaired })) }))),
+      editMacro('a', { type: 'settings', patch: { delayMs: 250 } }),
+      editMacro('a', { type: 'settings', patch: { name: 'Renamed' } }),
+      editMacro('a', { type: 'step', stepId: 's', patch: { label: 'Press Save' } }),
+    ]);
+
+    const [a, rec] = await macros.getValue();
+    expect(a).toEqual({ ...macro('a', 'Renamed'), delayMs: 250, steps: [{ ...step, label: 'Press Save', locators: repaired }] });
+    expect(rec!.id).toBe('rec');
+  });
+
+  it('never brings back a deleted macro', async () => {
+    const { macros, deleteMacro, editMacro } = await loadState();
     await macros.setValue([macro('a'), macro('b')]);
-
-    await Promise.all([updateMacros((ms) => [...ms, macro('rec')]), saveMacro(macro('a', 'Renamed')), deleteMacro('b'), saveMacro(macro('b', 'Late edit'))]);
-
-    expect(await macros.getValue()).toEqual([macro('a', 'Renamed'), macro('rec')]);
+    await Promise.all([deleteMacro('b'), editMacro('b', { type: 'settings', patch: { name: 'Late edit' } })]);
+    expect((await macros.getValue()).map((m) => m.id)).toEqual(['a']);
   });
 });

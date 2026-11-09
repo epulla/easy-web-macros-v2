@@ -187,5 +187,32 @@ export function moveStep(steps: Step[], from: number, to: number): Step[] {
 }
 
 // The copy goes right after the original, with its own id.
-export const duplicateStep = (steps: Step[], i: number): Step[] =>
-  steps.toSpliced(i + 1, 0, { ...structuredClone(steps[i]!), id: crypto.randomUUID() });
+export const duplicateStep = (steps: Step[], i: number, id: string): Step[] =>
+  steps.toSpliced(i + 1, 0, { ...structuredClone(steps[i]!), id });
+
+// One editor change. It names only what changed, so applying it to newer data keeps
+// everything else (a recording, a repaired step, an edit from another tab).
+export type MacroEdit =
+  | { type: 'settings'; patch: Partial<Pick<Macro, 'name' | 'delayMs' | 'runs' | 'loop'>> }
+  | { type: 'step'; stepId: string; patch: Partial<Step> }
+  | { type: 'move'; stepId: string; to: number }
+  | { type: 'duplicate'; stepId: string; newId: string }
+  | { type: 'delete-step'; stepId: string };
+
+// Safe to apply twice, since the editor re-applies changes still on their way.
+export function applyEdit(macro: Macro, edit: MacroEdit): Macro {
+  if (edit.type === 'settings') return { ...macro, ...edit.patch };
+  const i = macro.steps.findIndex((s) => s.id === edit.stepId);
+  if (i < 0) return macro;
+  const steps =
+    edit.type === 'step'
+      ? macro.steps.with(i, { ...macro.steps[i]!, ...edit.patch } as Step)
+      : edit.type === 'move'
+        ? moveStep(macro.steps, i, edit.to)
+        : edit.type === 'duplicate'
+          ? macro.steps.some((s) => s.id === edit.newId)
+            ? macro.steps
+            : duplicateStep(macro.steps, i, edit.newId)
+          : macro.steps.toSpliced(i, 1);
+  return { ...macro, steps };
+}

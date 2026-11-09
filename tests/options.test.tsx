@@ -18,7 +18,7 @@ beforeEach(async () => {
   vi.stubGlobal('requestAnimationFrame', (cb: () => void) => setTimeout(cb, 0));
   const state = await import('../src/bg/state');
   fakeBrowser.runtime.sendMessage = (async (msg: ToBackground) =>
-    msg.type === 'save-macro' ? state.saveMacro(msg.macro) : msg.type === 'delete-macro' ? state.deleteMacro(msg.id) : undefined) as never;
+    msg.type === 'edit-macro' ? state.editMacro(msg.id, msg.edit) : msg.type === 'delete-macro' ? state.deleteMacro(msg.id) : undefined) as never;
   await state.macros.setValue([macro('m', [click('a'), click('b')]), macro('n')]);
   document.body.innerHTML = '<div id="root"></div>';
   history.replaceState(null, '', '#m');

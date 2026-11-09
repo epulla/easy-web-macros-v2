@@ -20,7 +20,7 @@ describe('importMacro', () => {
   });
 
   it('round-trips a macro edited in the editor', () => {
-    const edited = { ...login!, name: 'Renamed', delayMs: 250, runs: 3, loop: true, steps: moveStep(duplicateStep(login!.steps, 0), 0, 1) };
+    const edited = { ...login!, name: 'Renamed', delayMs: 250, runs: 3, loop: true, steps: moveStep(duplicateStep(login!.steps, 0, 'copy'), 0, 1) };
     expect(importMacro(exportMacro(edited))).toEqual({ ...edited, id: expect.any(String) });
   });
 

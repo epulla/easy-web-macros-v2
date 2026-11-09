@@ -1,5 +1,5 @@
 import { storage } from 'wxt/utils/storage';
-import { migrate, type Macro, type V1Collection } from '../core/macro';
+import { applyEdit, migrate, type Macro, type MacroEdit, type V1Collection } from '../core/macro';
 
 // First run after a v1 update builds macros from v1 `collections`, which stays untouched.
 export const macros = storage.defineItem<Macro[]>('local:macros', {
@@ -16,8 +16,8 @@ export function updateMacros(fn: (ms: Macro[]) => Macro[]): Promise<void> {
   return next;
 }
 
-// Replaces a macro the editor changed; a macro deleted meanwhile stays deleted.
-export const saveMacro = (macro: Macro) => updateMacros((ms) => ms.map((m) => (m.id === macro.id ? macro : m)));
+// A macro deleted meanwhile stays deleted.
+export const editMacro = (id: string, edit: MacroEdit) => updateMacros((ms) => ms.map((m) => (m.id === id ? applyEdit(m, edit) : m)));
 export const addMacro = (macro: Macro) => updateMacros((ms) => [...ms, macro]);
 export const deleteMacro = (id: string) => updateMacros((ms) => ms.filter((m) => m.id !== id));
 

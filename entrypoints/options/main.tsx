@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { macros as macrosItem } from '../../src/bg/state';
 import type { ToBackground } from '../background';
-import { duplicateStep, exportMacro, importMacro, moveStep, type LocatorKind, type Macro, type Step } from '../../src/core/macro';
+import { applyEdit, exportMacro, importMacro, type LocatorKind, type Macro, type MacroEdit, type Step } from '../../src/core/macro';
 import '../../assets/tailwind.css';
 
 const ACTION: Record<Step['action'], string> = {
@@ -40,8 +40,9 @@ const focusSoon = (...ids: string[]) =>
       ?.focus(),
   );
 
-// Macros with edits still on their way to storage; storage updates keep our copy of those.
-const pending = new Map<string, number>();
+type Change = (ms: Macro[]) => Macro[];
+// Changes still on their way to storage, re-applied to every storage update so typing never jumps back.
+const pending = new Set<Change>();
 
 function Options() {
   const [macros, setMacros] = useState<Macro[]>([]);
@@ -55,36 +56,30 @@ function Options() {
   };
 
   useEffect(() => {
-    void macrosItem.getValue().then(show);
-    return macrosItem.watch((ms) => show(ms.flatMap((m) => (pending.has(m.id) ? latest.current.filter((x) => x.id === m.id) : [m]))));
+    const showSaved = (ms: Macro[]) => show([...pending].reduce((acc, fn) => fn(acc), ms));
+    void macrosItem.getValue().then(showSaved);
+    return macrosItem.watch(showSaved);
   }, []);
 
-  // The background applies each change to the latest saved macros, so recordings and
-  // repairs made meanwhile are kept.
-  const write = (id: string, next: Macro[], msg: ToBackground) => {
-    show(next);
-    pending.set(id, (pending.get(id) ?? 0) + 1);
+  // The background applies each change to the latest saved macros, so recordings,
+  // repairs and edits from another tab made meanwhile are kept.
+  const write = (fn: Change, msg: ToBackground) => {
+    show(fn(latest.current));
+    pending.add(fn);
     send(msg)
       .then(
         () => setError(''),
         () => setError("Couldn't save your last change. Try again."),
       )
-      .finally(() => {
-        const n = pending.get(id)! - 1;
-        if (n) pending.set(id, n);
-        else pending.delete(id);
-      });
+      .finally(() => pending.delete(fn));
   };
 
-  const change = (id: string, fn: (m: Macro) => Macro) => {
-    const next = latest.current.map((m) => (m.id === id ? fn(m) : m));
-    write(id, next, { type: 'save-macro', macro: next.find((m) => m.id === id)! });
-  };
+  const edit = (id: string, e: MacroEdit) => write((ms) => ms.map((m) => (m.id === id ? applyEdit(m, e) : m)), { type: 'edit-macro', id, edit: e });
 
   const remove = (id: string) => {
     const i = latest.current.findIndex((m) => m.id === id);
-    const next = latest.current.filter((m) => m.id !== id);
-    write(id, next, { type: 'delete-macro', id });
+    write((ms) => ms.filter((m) => m.id !== id), { type: 'delete-macro', id });
+    const next = latest.current;
     const neighbour = next[Math.min(i, next.length - 1)];
     if (neighbour) select(neighbour.id);
     focusSoon(neighbour ? `macro-${neighbour.id}` : 'empty');
@@ -158,7 +153,7 @@ function Options() {
             <MacroEditor
               key={macro.id}
               macro={macro}
-              change={(fn) => change(macro.id, fn)}
+              edit={(e) => edit(macro.id, e)}
               remove={() => remove(macro.id)}
             />
           )}
@@ -168,16 +163,16 @@ function Options() {
   );
 }
 
-function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m: Macro) => Macro) => void; remove: () => void }) {
+function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdit) => void; remove: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [announce, setAnnounce] = useState('');
 
-  const steps = (fn: (s: Step[]) => Step[]) => change((m) => ({ ...m, steps: fn(m.steps) }));
+  const settings = (patch: Extract<MacroEdit, { type: 'settings' }>['patch']) => edit({ type: 'settings', patch });
   // `focus` lists the pressed arrow first; at a list end it turns off and its partner gets focus.
   const move = (from: number, to: number, focus: string[] = []) => {
     if (to < 0 || to >= macro.steps.length || from === to) return;
-    steps((s) => moveStep(s, from, to));
+    edit({ type: 'move', stepId: macro.steps[from]!.id, to });
     focusSoon(...focus);
     setAnnounce(`Moved step ${from + 1} to position ${to + 1}.`);
   };
@@ -186,7 +181,7 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
     <section aria-label={`Edit ${macro.name}`} className="cassette flex min-w-0 flex-1 flex-col gap-4 p-4">
       <label className="flex flex-col gap-1 text-sm font-medium">
         Name
-        <input className="field text-base font-normal" value={macro.name} onChange={(e) => change((m) => ({ ...m, name: e.target.value }))} />
+        <input className="field text-base font-normal" value={macro.name} onChange={(e) => settings({ name: e.target.value })} />
       </label>
       <div className="flex flex-wrap items-end gap-4 text-sm">
         <label className="flex flex-col gap-1">
@@ -199,7 +194,7 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
             value={macro.delayMs / 1000}
             onChange={(e) => {
               const s = e.target.valueAsNumber;
-              if (Number.isFinite(s) && s >= 0) change((m) => ({ ...m, delayMs: Math.round(s * 1000) }));
+              if (Number.isFinite(s) && s >= 0) settings({ delayMs: Math.round(s * 1000) });
             }}
           />
         </label>
@@ -214,12 +209,12 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
             value={macro.runs}
             onChange={(e) => {
               const n = e.target.valueAsNumber;
-              if (Number.isInteger(n) && n >= 1) change((m) => ({ ...m, runs: n }));
+              if (Number.isInteger(n) && n >= 1) settings({ runs: n });
             }}
           />
         </label>
         <label className="flex items-center gap-2 pb-1.5">
-          <input type="checkbox" checked={macro.loop} onChange={(e) => change((m) => ({ ...m, loop: e.target.checked }))} />
+          <input type="checkbox" checked={macro.loop} onChange={(e) => settings({ loop: e.target.checked })} />
           Keep repeating until I press Stop
         </label>
       </div>
@@ -287,7 +282,7 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
                   >
                     Edit
                   </button>
-                  <button className="btn" aria-label={`Duplicate step ${i + 1}`} onClick={() => steps((s) => duplicateStep(s, i))}>
+                  <button className="btn" aria-label={`Duplicate step ${i + 1}`} onClick={() => edit({ type: 'duplicate', stepId: step.id, newId: crypto.randomUUID() })}>
                     Duplicate
                   </button>
                   <button
@@ -296,7 +291,7 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
                     onClick={() => {
                       if (!confirm(`Delete step ${i + 1}, "${step.label}"?`)) return;
                       const near = macro.steps[i + 1] ?? macro.steps[i - 1];
-                      steps((s) => s.filter((x) => x.id !== step.id));
+                      edit({ type: 'delete-step', stepId: step.id });
                       focusSoon(near ? `edit-btn-${near.id}` : 'steps-title');
                     }}
                   >
@@ -306,7 +301,7 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
               </div>
               {open === step.id && (
                 <div id={`edit-${step.id}`} className="ml-2 border-l-2 border-tape pl-3 pb-2">
-                  <StepFields step={step} change={(patch) => steps((s) => s.map((x) => (x.id === step.id ? ({ ...x, ...patch } as Step) : x)))} />
+                  <StepFields step={step} change={(patch) => edit({ type: 'step', stepId: step.id, patch })} />
                 </div>
               )}
             </li>
