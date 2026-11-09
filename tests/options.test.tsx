@@ -27,6 +27,25 @@ beforeEach(async () => {
 });
 
 describe('options editor', () => {
+  it('shows the saved order after several moves with slow saves, plus changes made elsewhere', async () => {
+    const state = await import('../src/bg/state');
+    const fast = fakeBrowser.runtime.sendMessage;
+    // The save lands right away but its reply comes late, so later saves land before earlier replies.
+    fakeBrowser.runtime.sendMessage = (async (msg: ToBackground) => (await fast(msg), await new Promise((r) => setTimeout(r, 50)))) as never;
+    await state.macros.setValue([macro('m', ['a', 'b', 'c', 'd'].map(click)), macro('n')]);
+    await act(() => new Promise((r) => setTimeout(r, 20)));
+    for (const name of ['Move step 2 down', 'Move step 2 up', 'Move step 2 down', 'Move step 4 up']) {
+      await act(async () => button(name).click());
+    }
+    await state.updateMacros((ms) => ms.map((m) => ({ ...m, name: m.id === 'm' ? 'Renamed elsewhere' : m.name })));
+    await act(() => new Promise((r) => setTimeout(r, 200)));
+
+    const saved = (await state.macros.getValue())[0]!;
+    expect(saved.steps.map((s) => s.id)).toEqual(['c', 'b', 'd', 'a']);
+    expect([...document.querySelectorAll('.track-label')].map((el) => el.textContent)).toEqual(['Click c', 'Click b', 'Click d', 'Click a']);
+    expect(document.querySelector<HTMLInputElement>('input.text-base')!.value).toBe('Renamed elsewhere');
+  });
+
   it('moves focus to the next step after deleting the focused one', async () => {
     button('Delete step 1').focus();
     await act(async () => button('Delete step 1').click());

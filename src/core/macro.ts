@@ -199,7 +199,6 @@ export type MacroEdit =
   | { type: 'duplicate'; stepId: string; newId: string }
   | { type: 'delete-step'; stepId: string };
 
-// Safe to apply twice, since the editor re-applies changes still on their way.
 export function applyEdit(macro: Macro, edit: MacroEdit): Macro {
   if (edit.type === 'settings') return { ...macro, ...edit.patch };
   const i = macro.steps.findIndex((s) => s.id === edit.stepId);
@@ -210,9 +209,7 @@ export function applyEdit(macro: Macro, edit: MacroEdit): Macro {
       : edit.type === 'move'
         ? moveStep(macro.steps, i, edit.to)
         : edit.type === 'duplicate'
-          ? macro.steps.some((s) => s.id === edit.newId)
-            ? macro.steps
-            : duplicateStep(macro.steps, i, edit.newId)
+          ? duplicateStep(macro.steps, i, edit.newId)
           : macro.steps.toSpliced(i, 1);
   return { ...macro, steps };
 }

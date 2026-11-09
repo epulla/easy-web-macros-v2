@@ -40,9 +40,9 @@ const focusSoon = (...ids: string[]) =>
       ?.focus(),
   );
 
-type Change = (ms: Macro[]) => Macro[];
-// Changes still on their way to storage, re-applied to every storage update so typing never jumps back.
-const pending = new Set<Change>();
+// Changes still on their way to storage. Meanwhile storage updates are held back so typing
+// never jumps; once all are saved, the saved macros (with any changes from elsewhere) show.
+let pending = 0;
 
 function Options() {
   const [macros, setMacros] = useState<Macro[]>([]);
@@ -56,22 +56,21 @@ function Options() {
   };
 
   useEffect(() => {
-    const showSaved = (ms: Macro[]) => show([...pending].reduce((acc, fn) => fn(acc), ms));
-    void macrosItem.getValue().then(showSaved);
-    return macrosItem.watch(showSaved);
+    void macrosItem.getValue().then(show);
+    return macrosItem.watch((ms) => pending === 0 && show(ms));
   }, []);
 
   // The background applies each change to the latest saved macros, so recordings,
   // repairs and edits from another tab made meanwhile are kept.
-  const write = (fn: Change, msg: ToBackground) => {
+  const write = (fn: (ms: Macro[]) => Macro[], msg: ToBackground) => {
     show(fn(latest.current));
-    pending.add(fn);
+    pending++;
     send(msg)
       .then(
         () => setError(''),
         () => setError("Couldn't save your last change. Try again."),
       )
-      .finally(() => pending.delete(fn));
+      .finally(() => --pending === 0 && void macrosItem.getValue().then((ms) => pending === 0 && show(ms)));
   };
 
   const edit = (id: string, e: MacroEdit) => write((ms) => ms.map((m) => (m.id === id ? applyEdit(m, e) : m)), { type: 'edit-macro', id, edit: e });
