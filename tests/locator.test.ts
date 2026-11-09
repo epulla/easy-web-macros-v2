@@ -148,6 +148,14 @@ describe('frames and shadow DOM', () => {
     await expect(waitForElement(target, { timeoutMs: 0 })).resolves.toBe(input);
   });
 
+  it.each([0, 1])('finds identical sibling button %i directly inside a shadow root', async (i) => {
+    const host = document.createElement('x-pair');
+    host.attachShadow({ mode: 'open' }).innerHTML = '<button>Go</button><button>Go</button>';
+    document.body.append(host);
+    const button = host.shadowRoot!.querySelectorAll('button')[i]!;
+    await expect(waitForElement(captureTarget(button), { timeoutMs: 0 })).resolves.toBe(button);
+  });
+
   it('tells apart identical widgets by their host', async () => {
     document.body.innerHTML = '<x-card data-card="a"></x-card><x-card data-card="b"></x-card>';
     for (const host of document.querySelectorAll('x-card')) {

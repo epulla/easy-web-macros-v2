@@ -170,7 +170,7 @@ function cssPath(el: Element): string {
       parts.unshift(attr('id', cur.id));
       break;
     }
-    const sameTag = cur.parentElement ? Array.from(cur.parentElement.children).filter((c) => c.tagName === cur!.tagName) : [];
+    const sameTag = Array.from((cur.parentNode as ParentNode | null)?.children ?? []).filter((c) => c.tagName === cur!.tagName);
     parts.unshift(sameTag.length > 1 ? `${tag(cur)}:nth-of-type(${sameTag.indexOf(cur) + 1})` : tag(cur));
   }
   return parts.join(' > ');
@@ -179,7 +179,7 @@ function cssPath(el: Element): string {
 function xpathOf(el: Element): string {
   const parts: string[] = [];
   for (let cur: Element | null = el; cur; cur = cur.parentElement) {
-    const sameTag = cur.parentElement ? Array.from(cur.parentElement.children).filter((c) => c.tagName === cur!.tagName) : [];
+    const sameTag = Array.from((cur.parentNode as ParentNode | null)?.children ?? []).filter((c) => c.tagName === cur!.tagName);
     parts.unshift(sameTag.length > 1 ? `${tag(cur)}[${sameTag.indexOf(cur) + 1}]` : tag(cur));
   }
   return '/' + parts.join('/');
