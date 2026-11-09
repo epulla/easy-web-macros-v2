@@ -248,7 +248,7 @@ export async function resume() {
 
 export async function skip() {
   await update(async (r) => {
-    if (!r || r.state === 'running' || r.state === 'done') return;
+    if (!r || r.state === 'running' || r.state === 'done' || r.index >= r.steps.length) return;
     cancel(r);
     await run.setValue({ ...r, status: r.status.with(r.index, 'skipped'), index: r.index + 1, state: 'running', message: '' });
   });

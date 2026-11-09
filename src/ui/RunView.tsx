@@ -109,7 +109,7 @@ export function RunView({ run, act }: { run: Run; act: RunActions }) {
             Pick it on the page
           </button>
         )}
-        {['failed', 'waiting', 'paused', 'picking'].includes(run.state) && (
+        {step && ['failed', 'waiting', 'paused', 'picking'].includes(run.state) && (
           <button className="btn" onClick={act.skip}>
             Skip this step
           </button>

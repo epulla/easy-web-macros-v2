@@ -242,4 +242,14 @@ describe('replay', () => {
       message: 'Step 1: the page closed or stopped responding during this step. Open the page again, then press Try again.',
     });
   });
+
+  it('finishes normally when Skip is pressed after a paused last step completed', async () => {
+    await save([click('a')]);
+    page = (_, msg) => (msg.type === 'play' && void r.pause(), { ok: true });
+    await r.play('m', 1);
+    expect(await until('paused')).toMatchObject({ index: 1, status: ['done'] });
+    await r.skip();
+    await r.resume();
+    expect((await until('done')).status).toEqual(['done']);
+  });
 });
