@@ -2,7 +2,7 @@ import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
 import type { Target } from '../core/locator';
 import type { Step } from '../core/macro';
-import { describeTarget, NOT_LOADED, PAGE_NOT_READY, stepError, type PageStep, type PlayResult } from '../core/player';
+import { describeTarget, NOT_LOADED, PAGE_LOST, PAGE_NOT_READY, stepError, type PageStep, type PlayResult } from '../core/player';
 import { macros } from './state';
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped';
@@ -86,8 +86,7 @@ const loadedSince = (g: number, tabId: number, at: number, ms: number) =>
 
 const NO_RECEIVER = /Receiving end does not exist|Could not establish connection/;
 
-// Right after a page change the new page may not be listening yet. Any other failure
-// means the page went away after getting the message (e.g. the click left the page).
+// Right after a page change the new page may not be listening yet.
 async function sendToPage(g: number, tabId: number, msg: ToPage, ms = 15_000): Promise<unknown> {
   const deadline = Date.now() + ms;
   for (;;) {
@@ -95,8 +94,7 @@ async function sendToPage(g: number, tabId: number, msg: ToPage, ms = 15_000): P
     try {
       return await browser.tabs.sendMessage(tabId, msg, { frameId: 0 });
     } catch (e) {
-      if (!NO_RECEIVER.test(String(e))) return { ok: true };
-      if (Date.now() >= deadline) throw e;
+      if (!NO_RECEIVER.test(String(e)) || Date.now() >= deadline) throw e;
       await sleep(300);
     }
   }
@@ -147,8 +145,16 @@ async function perform(g: number, r: Run): Promise<Outcome> {
       value = given.value;
       given = undefined;
     }
-    acted = { runId: r.id, index: r.index, at: Date.now() };
-    const res = (await sendToPage(g, r.tabId, { type: 'play', step, value })) as PlayResult;
+    const at = Date.now();
+    acted = { runId: r.id, index: r.index, at };
+    let res: PlayResult;
+    try {
+      res = (await sendToPage(g, r.tabId, { type: 'play', step, value })) as PlayResult;
+    } catch (e) {
+      if (NO_RECEIVER.test(String(e))) throw e;
+      // The reply is lost when the action leaves the page; only a new page loading proves it ran.
+      return (await loadedSince(g, r.tabId, at, FOLLOW_MS)) ? { ok: true } : { error: PAGE_LOST };
+    }
     if (step.action === 'upload' && 'ok' in res) {
       return { ask: `Step ${n}: choose the file for ${describeTarget(step)} on the page, then press Continue.` };
     }

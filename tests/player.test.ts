@@ -48,6 +48,11 @@ describe('play failures', () => {
     expect(await play(step)).toEqual({ error: ACTION_FAILED });
   });
 
+  it('reports a list step aimed at something that is not a list', async () => {
+    const step: PageStep = { ...base, locators: [{ kind: 'id', value: 'email' }], action: 'select', value: 'b' };
+    expect(await play(step)).toEqual({ error: ACTION_FAILED });
+  });
+
   it('stops waiting for the element when playback is cancelled', async () => {
     const stop = new AbortController();
     const result = play({ ...base, locators: [{ kind: 'id', value: 'nope' }], action: 'click' }, undefined, stop.signal);

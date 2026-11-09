@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import type { Macro, Step } from '../src/core/macro';
 import type { ToPage } from '../src/bg/replay';
@@ -32,6 +32,8 @@ beforeEach(async () => {
   fakeBrowser.tabs.create = vi.fn(async () => ({ id: 9 })) as never;
   await load();
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe('replay', () => {
   it('plays every step in order and waits for the page a click opens', async () => {
@@ -217,5 +219,27 @@ describe('replay', () => {
     const { macros } = await import('../src/bg/state');
     expect((await macros.getValue())[0]!.steps[0]!.locators).toEqual([{ kind: 'id', value: 'old' }]);
     expect((await r.run.getValue())!.steps[0]!.locators).toEqual([{ kind: 'id', value: 'old' }]);
+  });
+
+  it('counts a step done when its reply is lost because the page changed', async () => {
+    await save([click('submit')]);
+    fakeBrowser.tabs.sendMessage = vi.fn(async () => {
+      setTimeout(() => r.pageLoaded(1), 20);
+      throw new Error('The message port closed before a response was received.');
+    }) as never;
+    await r.play('m', 1);
+    expect((await until('done')).status).toEqual(['done']);
+  });
+
+  it.each(['No tab with id: 1.', 'Error in event handler: boom'])('fails the step when delivery fails without a new page: %s', async (text) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await save([click('submit')]);
+    fakeBrowser.tabs.sendMessage = vi.fn(async () => Promise.reject(new Error(text))) as never;
+    await r.play('m', 1);
+    await vi.advanceTimersByTimeAsync(11_000);
+    expect(await until('failed')).toMatchObject({
+      status: ['failed'],
+      message: 'Step 1: the page closed or stopped responding during this step. Open the page again, then press Try again.',
+    });
   });
 });
