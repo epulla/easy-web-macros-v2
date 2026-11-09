@@ -16,8 +16,11 @@ interface StepBase {
 }
 
 export type Step =
-  | (StepBase & { action: 'click' })
-  | (StepBase & { action: 'type'; value: string; secret: boolean });
+  | (StepBase & { action: 'click' | 'dblclick' | 'hover' | 'scroll' | 'upload' })
+  | (StepBase & { action: 'type'; value: string; secret: boolean })
+  | (StepBase & { action: 'select'; value: string })
+  | (StepBase & { action: 'check'; checked: boolean })
+  | (StepBase & { action: 'key'; key: string });
 
 export interface Macro {
   id: string;
@@ -118,8 +121,24 @@ function isStep(s: unknown): s is Step {
   if (!isObject(s) || typeof s.id !== 'string' || typeof s.label !== 'string') return false;
   if (!isLocators(s.locators)) return false;
   if (s.scope !== undefined && !(Array.isArray(s.scope) && s.scope.every(isLocators))) return false;
-  if (s.action === 'click') return true;
-  return s.action === 'type' && typeof s.value === 'string' && typeof s.secret === 'boolean';
+  switch (s.action) {
+    case 'click':
+    case 'dblclick':
+    case 'hover':
+    case 'scroll':
+    case 'upload':
+      return true;
+    case 'type':
+      return isString(s.value) && isBoolean(s.secret);
+    case 'select':
+      return isString(s.value);
+    case 'check':
+      return isBoolean(s.checked);
+    case 'key':
+      return isString(s.key);
+    default:
+      return false;
+  }
 }
 
 function isMacro(m: unknown): m is Macro {

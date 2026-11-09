@@ -24,10 +24,22 @@ describe('importMacro', () => {
     expect(importMacro(exportMacro(scoped)).steps).toEqual(scoped.steps);
   });
 
+  it('keeps recorded step types from a v2 file', () => {
+    const base = { label: '', locators: [] };
+    const steps = [
+      { ...base, id: 'a', action: 'dblclick' as const },
+      { ...base, id: 'b', action: 'select' as const, value: 'pe' },
+      { ...base, id: 'c', action: 'check' as const, checked: false },
+      { ...base, id: 'd', action: 'key' as const, key: 'Control+S' },
+    ];
+    expect(importMacro(exportMacro({ ...login!, steps })).steps).toEqual(steps);
+  });
+
   it.each([
     ['not JSON', 'nope', "This file isn't a macro file."],
     ['unrelated JSON', '{"foo":1}', "This file isn't a macro file."],
     ['bad v2 step', JSON.stringify({ version: 2, macro: { ...login, steps: [{ id: 's', label: '', locators: [], action: 'type' }] } }), "This macro file is damaged and can't be imported."],
+    ['bad v2 check step', JSON.stringify({ version: 2, macro: { ...login, steps: [{ id: 's', label: '', locators: [], action: 'check', checked: 'yes' }] } }), "This macro file is damaged and can't be imported."],
     ['bad v2 scope', JSON.stringify({ version: 2, macro: { ...login, steps: [{ id: 's', label: '', locators: [], scope: [[{ kind: 'nope', value: '' }]], action: 'click' }] } }), "This macro file is damaged and can't be imported."],
     ['bad v1 step', JSON.stringify({ name: 'x', steps: [{ id: 's', strategy: 'Goto' }], delayBetweenSteps: 1 }), "This macro file is damaged and can't be imported."],
     ['v1 numeric value', JSON.stringify({ name: 'x', steps: [{ id: 's', strategy: 'InputSendKeys', value: 42 }], delayBetweenSteps: 1 }), "This macro file is damaged and can't be imported."],

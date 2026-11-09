@@ -56,7 +56,7 @@ function visibleText(el: Element): string {
 const labelText = (el: Element) =>
   clean(Array.from((el as HTMLInputElement).labels ?? [], visibleText).join(' '));
 
-function nameOf(el: Element): string {
+export function nameOf(el: Element): string {
   const root = el.getRootNode() as Root;
   const ids = el.getAttribute('aria-labelledby');
   if (ids) {
