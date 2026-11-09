@@ -1,5 +1,7 @@
 import { record } from '../src/core/recorder';
 import type { ToContent } from '../src/bg/recording';
+import type { ToPage } from '../src/bg/replay';
+import { play } from '../src/core/player';
 import type { ToBackground } from './background';
 
 const INDICATOR_CSS = `
@@ -40,7 +42,9 @@ export default defineContentScript({
         hide?.();
       };
     };
-    browser.runtime.onMessage.addListener((msg: ToContent) => {
+    browser.runtime.onMessage.addListener((msg: ToContent | ToPage) => {
+      if (msg.type === 'play') return play(msg.step, msg.value);
+      if (msg.type === 'where') return Promise.resolve(location.href);
       if (msg.type === 'start') {
         begin(msg.hover);
         if (top) void send({ type: 'started', url: location.href });
