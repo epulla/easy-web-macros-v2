@@ -83,11 +83,14 @@ describe('replay', () => {
     await r.play('m', 1);
     const failed = await until('failed');
     expect(failed).toMatchObject({ index: 1, message: 'Step 2: missing', status: ['done', 'failed', 'pending'] });
+    const { lastRuns } = await import('../src/bg/state');
+    await vi.waitFor(async () => expect((await lastRuns.getValue()).m).toMatchObject({ ok: false, step: 2 }));
 
     fail = false;
     await r.resume();
     expect((await until('done')).status).toEqual(['done', 'done', 'done']);
     expect(played.map(([, id]) => id)).toEqual(['a', 'b', 'b', 'c']);
+    await vi.waitFor(async () => expect((await lastRuns.getValue()).m).toEqual({ ok: true, at: expect.any(Number) }));
   });
 
   it('pauses after the current step, resumes, and stops', async () => {

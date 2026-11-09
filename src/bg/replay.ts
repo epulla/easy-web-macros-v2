@@ -3,7 +3,7 @@ import { storage } from 'wxt/utils/storage';
 import type { Target } from '../core/locator';
 import type { Step } from '../core/macro';
 import { describeTarget, NOT_LOADED, PAGE_LOST, PAGE_NOT_READY, stepError, type PageStep, type PlayResult } from '../core/player';
-import { macros } from './state';
+import { lastRuns, macros } from './state';
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped';
 
@@ -63,6 +63,10 @@ const patch = (id: string, fn: (r: Run) => Partial<Run> | null) =>
     if (!r || !changes) return null;
     const next = { ...r, ...changes };
     await run.setValue(next);
+    if (next.state !== r.state && (next.state === 'done' || next.state === 'failed')) {
+      const last = next.state === 'done' ? { ok: true, at: Date.now() } : { ok: false, at: Date.now(), step: next.index + 1 };
+      await lastRuns.setValue({ ...(await lastRuns.getValue()), [next.macroId]: last });
+    }
     return next;
   });
 

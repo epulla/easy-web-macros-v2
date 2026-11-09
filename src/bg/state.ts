@@ -9,3 +9,11 @@ export const macros = storage.defineItem<Macro[]>('local:macros', {
 
 // Playback speed multiplier chosen in the popup.
 export const speed = storage.defineItem<number>('local:speed', { fallback: 1 });
+
+// How each macro's latest playback ended, keyed by macro id; `step` is the 1-based step it stopped at.
+export interface LastRun {
+  ok: boolean;
+  at: number;
+  step?: number;
+}
+export const lastRuns = storage.defineItem<Record<string, LastRun>>('local:lastRuns', { fallback: {} });

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import type { Run, StepStatus } from '../bg/replay';
 
-const STATUS: Record<StepStatus, { icon: string; text: string; className: string }> = {
-  pending: { icon: '○', text: 'Waiting', className: 'text-neutral-400' },
-  running: { icon: '▶', text: 'Playing now', className: 'text-blue-600 animate-pulse motion-reduce:animate-none' },
-  done: { icon: '✓', text: 'Done', className: 'text-emerald-600' },
-  failed: { icon: '✕', text: 'Failed', className: 'text-rose-600' },
-  skipped: { icon: '↷', text: 'Skipped', className: 'text-neutral-400' },
+const STATUS: Record<StepStatus, string> = {
+  pending: 'Waiting',
+  running: 'Playing now',
+  done: 'Done',
+  failed: 'Failed',
+  skipped: 'Skipped',
 };
 
 const HEADLINE: Record<Run['state'], string> = {
@@ -35,30 +35,31 @@ export function RunView({ run, act }: { run: Run; act: RunActions }) {
   const step = run.steps[run.index];
   const asksPassword = run.state === 'waiting' && step?.action === 'type';
   const rounds = run.loop ? ` · run ${run.round}` : run.runs > 1 ? ` · run ${run.round} of ${run.runs}` : '';
+  const position = run.state === 'done' ? '' : ` · step ${Math.min(run.index + 1, run.steps.length)} of ${run.steps.length}`;
   return (
     <section className="flex flex-col gap-3" aria-label={`Playing ${run.name}`}>
-      <p role="status" className="font-medium">
-        {HEADLINE[run.state]}: {run.name}
-        {rounds}
-      </p>
-      <ol className="flex max-h-64 flex-col gap-1 overflow-y-auto text-sm">
-        {run.steps.map((step, i) => {
-          const s = STATUS[run.status[i]!];
-          return (
-            <li key={step.id} className="flex items-start gap-2" aria-current={run.status[i] === 'running' ? 'step' : undefined}>
-              <span aria-hidden className={`w-4 shrink-0 text-center ${s.className}`}>
-                {s.icon}
-              </span>
-              <span className="sr-only">{s.text}:</span>
-              <span className={run.status[i] === 'failed' ? 'font-medium text-rose-700' : ''}>
-                {i + 1}. {step.label}
-              </span>
-            </li>
-          );
-        })}
+      <div className="lcd">
+        <p role="status" className="flex items-center gap-2">
+          <span aria-hidden>{run.state === 'running' ? '▶' : run.state === 'done' ? '■' : run.state === 'paused' ? '❚❚' : '!'}</span>
+          {HEADLINE[run.state]}
+          {position}
+          {rounds}
+        </p>
+        <p className="truncate text-xs opacity-80">{run.name}</p>
+      </div>
+      <ol className="tracks max-h-64 overflow-y-auto" aria-label="Steps">
+        {run.steps.map((step, i) => (
+          <li key={step.id} className="track" data-status={run.status[i]} aria-current={run.status[i] === 'running' ? 'step' : undefined}>
+            <span className="track-no">{String(i + 1).padStart(2, '0')}</span>
+            <span className="sr-only">{STATUS[run.status[i]!]}:</span>
+            <span className="track-label min-w-0 flex-1">{step.label}</span>
+            {run.status[i] === 'done' && <span aria-hidden className="text-ok">✓</span>}
+            {run.status[i] === 'failed' && <span aria-hidden>✕</span>}
+          </li>
+        ))}
       </ol>
       {run.message && (
-        <p role="alert" className={`text-sm ${run.state === 'failed' ? 'text-rose-700' : 'text-amber-800'}`}>
+        <p role="alert" className={`text-sm ${run.state === 'failed' ? 'text-rec' : 'text-warn'}`}>
           {rich(run.message)}
         </p>
       )}
@@ -76,7 +77,7 @@ export function RunView({ run, act }: { run: Run; act: RunActions }) {
             aria-label="Password"
             autoComplete="off"
             autoFocus
-            className="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm"
+            className="field min-w-0 flex-1 text-sm"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -85,22 +86,26 @@ export function RunView({ run, act }: { run: Run; act: RunActions }) {
       )}
       <div className="flex flex-wrap gap-2">
         {run.state === 'running' && (
-          <button className="btn" onClick={act.pause}>
+          <button className="key key-sm" onClick={act.pause}>
+            <span aria-hidden>❚❚</span>
             Pause
           </button>
         )}
         {run.state === 'paused' && (
-          <button className="btn" onClick={act.resume}>
+          <button className="key key-sm" onClick={act.resume}>
+            <span aria-hidden>▶</span>
             Continue
           </button>
         )}
         {run.state === 'waiting' && step?.action === 'upload' && (
-          <button className="btn" onClick={() => act.proceed()}>
+          <button className="key key-sm" onClick={() => act.proceed()}>
+            <span aria-hidden>▶</span>
             Continue
           </button>
         )}
         {(run.state === 'failed' || run.state === 'picking') && (
-          <button className="btn" onClick={act.resume}>
+          <button className="key key-sm" onClick={act.resume}>
+            <span aria-hidden>↻</span>
             Try again
           </button>
         )}
@@ -114,7 +119,8 @@ export function RunView({ run, act }: { run: Run; act: RunActions }) {
             Skip this step
           </button>
         )}
-        <button className="btn" onClick={act.stop}>
+        <button className="key key-sm" onClick={act.stop}>
+          <span aria-hidden>■</span>
           {run.state === 'done' ? 'Close' : 'Stop'}
         </button>
       </div>
