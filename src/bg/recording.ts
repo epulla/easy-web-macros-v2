@@ -52,6 +52,44 @@ export const addOp = (tabId: number, op: RecordOp) =>
     if (r?.tabs.includes(tabId)) await recording.setValue({ ...r, steps: applyOp(r.steps, op) });
   });
 
-// A page that just loaded asks whether to keep recording.
-export const hello = (tabId: number) =>
-  update((r) => (r?.tabs.includes(tabId) ? { hover: r.hover } : null));
+// Back-to-back page loads (redirects, reloads) collapse into one step.
+function visit(r: Recording, url: string, newTab: boolean): Recording {
+  const last = r.steps.at(-1);
+  const merge = last?.action === 'navigate' && !newTab;
+  newTab ||= merge && last.newTab;
+  const where = url.replace(/^https?:\/\//, '');
+  const step: Step = {
+    id: merge ? last.id : crypto.randomUUID(),
+    label: newTab ? `Open ${where} in a new tab` : `Go to ${where}`,
+    locators: [],
+    action: 'navigate',
+    url,
+    newTab,
+  };
+  return { ...r, steps: applyOp(r.steps, { op: 'put', step }) };
+}
+
+export interface Page {
+  url: string;
+  top: boolean;
+  openerTabId?: number;
+}
+
+// A page that just loaded asks whether to keep recording. Tabs opened from a
+// recording tab join the recording.
+export const hello = (tabId: number, { url, top, openerTabId }: Page) =>
+  update(async (r) => {
+    if (!r) return null;
+    const joins = !r.tabs.includes(tabId);
+    if (joins && (openerTabId === undefined || !r.tabs.includes(openerTabId))) return null;
+    let next = joins ? { ...r, tabs: [...r.tabs, tabId] } : r;
+    if (top) next = visit(next, url, joins);
+    await recording.setValue(next);
+    return { hover: r.hover };
+  });
+
+// The page the recording starts on.
+export const firstPage = (tabId: number, url: string) =>
+  update(async (r) => {
+    if (r?.tabs.includes(tabId)) await recording.setValue(visit(r, url, false));
+  });

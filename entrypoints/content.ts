@@ -8,6 +8,7 @@ export default defineContentScript({
   async main() {
     // Steps inside cross-origin frames can't be found again from the page, so skip them.
     if (window !== window.top && !window.frameElement) return;
+    const top = window === window.top;
     const send = (msg: ToBackground) => browser.runtime.sendMessage(msg);
     let stop: (() => void) | undefined;
     const begin = (hover: boolean) => {
@@ -15,13 +16,16 @@ export default defineContentScript({
       stop = record(document, (op) => void send({ type: 'op', op }).catch(() => {}), { hover });
     };
     browser.runtime.onMessage.addListener((msg: ToContent) => {
-      if (msg.type === 'start') begin(msg.hover);
+      if (msg.type === 'start') {
+        begin(msg.hover);
+        if (top) void send({ type: 'started', url: location.href });
+      }
       if (msg.type === 'stop') {
         stop?.();
         stop = undefined;
       }
     });
-    const state = (await send({ type: 'hello', url: location.href, top: window === window.top })) as { hover: boolean } | null;
+    const state = (await send({ type: 'hello', url: location.href, top })) as { hover: boolean } | null;
     if (state) begin(state.hover);
   },
 });

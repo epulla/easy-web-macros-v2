@@ -33,8 +33,28 @@ describe('recording', () => {
   it('tells a reloaded page in the recording tab to keep recording', async () => {
     const r = await load();
     await r.startRecording(1);
-    expect(await r.hello(1)).toEqual({ hover: false });
-    expect(await r.hello(2)).toBeNull();
+    expect(await r.hello(1, { url: 'https://a.io/', top: true })).toEqual({ hover: false });
+    expect(await r.hello(2, { url: 'https://b.io/', top: true })).toBeNull();
+  });
+
+  it('records the start page, page changes, and tabs opened from the recording', async () => {
+    const r = await load();
+    await r.startRecording(1);
+    await r.firstPage(1, 'https://a.io/login');
+    await r.addOp(1, { op: 'put', step: step('submit') });
+    await r.hello(1, { url: 'https://a.io/redirect', top: true });
+    await r.hello(1, { url: 'https://a.io/home', top: true });
+    await r.hello(1, { url: 'https://ads.io/frame', top: false });
+    expect(await r.hello(2, { url: 'https://a.io/report', top: true, openerTabId: 1 })).toEqual({ hover: false });
+    await r.addOp(2, { op: 'put', step: step('download') });
+
+    expect((await r.recording.getValue())?.steps.map(({ id, locators, ...s }) => s)).toEqual([
+      { label: 'Go to a.io/login', action: 'navigate', url: 'https://a.io/login', newTab: false },
+      { label: 'Click', action: 'click' },
+      { label: 'Go to a.io/home', action: 'navigate', url: 'https://a.io/home', newTab: false },
+      { label: 'Open a.io/report in a new tab', action: 'navigate', url: 'https://a.io/report', newTab: true },
+      { label: 'Click', action: 'click' },
+    ]);
   });
 
   it('keeps recording after the background worker restarts', async () => {

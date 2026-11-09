@@ -31,6 +31,7 @@ describe('importMacro', () => {
       { ...base, id: 'b', action: 'select' as const, value: 'pe' },
       { ...base, id: 'c', action: 'check' as const, checked: false },
       { ...base, id: 'd', action: 'key' as const, key: 'Control+S' },
+      { ...base, id: 'e', action: 'navigate' as const, url: 'https://x.io/', newTab: true },
     ];
     expect(importMacro(exportMacro({ ...login!, steps })).steps).toEqual(steps);
   });

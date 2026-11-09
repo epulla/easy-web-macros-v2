@@ -20,7 +20,8 @@ export type Step =
   | (StepBase & { action: 'type'; value: string; secret: boolean })
   | (StepBase & { action: 'select'; value: string })
   | (StepBase & { action: 'check'; checked: boolean })
-  | (StepBase & { action: 'key'; key: string });
+  | (StepBase & { action: 'key'; key: string })
+  | (StepBase & { action: 'navigate'; url: string; newTab: boolean });
 
 export interface Macro {
   id: string;
@@ -136,6 +137,8 @@ function isStep(s: unknown): s is Step {
       return isBoolean(s.checked);
     case 'key':
       return isString(s.key);
+    case 'navigate':
+      return isString(s.url) && isBoolean(s.newTab);
     default:
       return false;
   }
