@@ -2,13 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { recording, type Recording } from '../../src/bg/recording';
 import { run as runItem, type Run } from '../../src/bg/replay';
-import { lastRuns as lastRunsItem, macros as macrosItem, speed as speedItem, type LastRun } from '../../src/bg/state';
+import { lastRuns as lastRunsItem, macros as macrosItem, rating as ratingItem, speed as speedItem, type LastRun } from '../../src/bg/state';
 import type { Macro } from '../../src/core/macro';
+import { NO_RATING, notNow, shouldAsk, type Rating } from '../../src/core/rating';
 import { RunView } from '../../src/ui/RunView';
 import type { ToBackground } from '../background';
 import '../../assets/tailwind.css';
 
 const send = (msg: ToBackground) => browser.runtime.sendMessage(msg);
+const REVIEW_URL = 'https://chromewebstore.google.com/detail/cmpjcbhhaneoeekleibpfoejfieblekk/reviews';
+const ISSUES_URL = 'https://github.com/epulla/easy-web-macros-v2/issues';
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function ago(at: number) {
@@ -36,6 +39,7 @@ function Popup() {
   const [macros, setMacros] = useState<Macro[]>([]);
   const [lastRuns, setLastRuns] = useState<Record<string, LastRun>>({});
   const [speed, setSpeed] = useState(1);
+  const [rating, setRating] = useState<Rating>(NO_RATING);
 
   useEffect(() => {
     void recording.getValue().then(setRec);
@@ -43,7 +47,14 @@ function Popup() {
     void macrosItem.getValue().then(setMacros);
     void lastRunsItem.getValue().then(setLastRuns);
     void speedItem.getValue().then(setSpeed);
-    const unwatch = [recording.watch(setRec), runItem.watch(setRun), macrosItem.watch(setMacros), lastRunsItem.watch(setLastRuns)];
+    void ratingItem.getValue().then(setRating);
+    const unwatch = [
+      recording.watch(setRec),
+      runItem.watch(setRun),
+      macrosItem.watch(setMacros),
+      lastRunsItem.watch(setLastRuns),
+      ratingItem.watch(setRating),
+    ];
     return () => unwatch.forEach((u) => u());
   }, []);
 
@@ -63,6 +74,13 @@ function Popup() {
 
   const edit = (macroId?: string) => {
     void browser.tabs.create({ url: browser.runtime.getURL(`/options.html${macroId ? `#${macroId}` : ''}`) });
+    window.close();
+  };
+
+  const answer = (fn: (r: Rating) => Rating) => ratingItem.getValue().then((r) => ratingItem.setValue(fn(r)));
+  const rate = async () => {
+    await answer((r) => ({ ...r, done: true }));
+    void browser.tabs.create({ url: REVIEW_URL });
     window.close();
   };
 
@@ -179,6 +197,23 @@ function Popup() {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+          {shouldAsk(rating) && (
+            <section aria-labelledby="rate-title" className="cassette flex flex-col gap-2">
+              <h2 id="rate-title" className="text-sm font-semibold">Is Easy Web Macros saving you time?</h2>
+              <p className="text-xs text-muted">A quick rating on the Chrome Web Store helps other people find it.</p>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn" onClick={() => void rate()}>
+                  <span aria-hidden>★</span>
+                  Rate it
+                </button>
+                <button className="btn" onClick={() => void answer(notNow)}>Not now</button>
+                <button className="btn" onClick={() => void answer((r) => ({ ...r, done: true }))}>Don't ask again</button>
+              </div>
+              <a className="text-xs text-muted underline" href={ISSUES_URL} target="_blank" rel="noreferrer">
+                Something's not working? Tell us here instead.
+              </a>
             </section>
           )}
           {error && <p role="alert" className="text-sm text-rec">{error}</p>}
