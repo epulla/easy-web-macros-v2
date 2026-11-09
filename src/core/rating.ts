@@ -13,5 +13,5 @@ export const recordRun = (r: Rating, ok: boolean): Rating => ({ ...r, successes:
 
 export const shouldAsk = (r: Rating) => !r.done && r.asked < 2 && r.lastOk && r.successes >= 5;
 
-// "Not now" waits for 5 more successes before the second (and last) ask.
-export const notNow = (r: Rating): Rating => ({ ...r, successes: 0, asked: r.asked + 1 });
+// Each time the prompt shows, the next (and last) ask waits for 5 more successes.
+export const markAsked = (r: Rating): Rating => ({ ...r, successes: 0, asked: r.asked + 1 });
