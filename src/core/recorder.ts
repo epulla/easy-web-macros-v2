@@ -86,6 +86,11 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
   const onInput = (e: Event) => {
     const el = targetOf(e);
     if (!el || !isTextEntry(el)) return;
+    // Password values are never stored, even after a "show password" toggle turns the field into text.
+    if (el.matches('input[type=password],input[autocomplete$=password]')) {
+      put(el, { action: 'type', label: `Type password in ${describe(el)}`, value: '', secret: true });
+      return;
+    }
     const value = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ? (el as HTMLInputElement).value : (el.textContent ?? '');
     put(el, { action: 'type', label: `Type in ${describe(el)}`, value, secret: false });
   };

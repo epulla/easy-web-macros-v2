@@ -61,6 +61,17 @@ describe('record', () => {
     expect(brief()).toEqual([{ action: 'type', label: 'Type in "Email"', value: 'ana@x.io', secret: false }]);
   });
 
+  it.each([
+    ['password field', '<input id="pw" type="password" aria-label="Password" />'],
+    ['shown password', '<input id="pw" type="text" autocomplete="current-password" aria-label="Password" />'],
+  ])('never stores what is typed in a %s', (_, html) => {
+    document.body.innerHTML = html;
+    start();
+    typeInto($('#pw'), 'hunter2');
+    expect(brief()).toEqual([{ action: 'type', label: 'Type password in "Password"', value: '', secret: true }]);
+    expect(JSON.stringify(ops)).not.toContain('hunter');
+  });
+
   it('starts a new type step after another action', () => {
     start();
     typeInto($('#email'), 'a');
