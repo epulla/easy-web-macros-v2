@@ -83,7 +83,7 @@ describe('replay', () => {
     await r.play('m', 1);
     const failed = await until('failed');
     expect(failed).toMatchObject({ index: 1, message: 'Step 2: missing', status: ['done', 'failed', 'pending'] });
-    const { lastRuns } = await import('../src/bg/state');
+    const { lastRuns, rating } = await import('../src/bg/state');
     await vi.waitFor(async () => expect((await lastRuns.getValue()).m).toMatchObject({ ok: false, step: 2 }));
 
     fail = false;
@@ -91,6 +91,7 @@ describe('replay', () => {
     expect((await until('done')).status).toEqual(['done', 'done', 'done']);
     expect(played.map(([, id]) => id)).toEqual(['a', 'b', 'b', 'c']);
     await vi.waitFor(async () => expect((await lastRuns.getValue()).m).toEqual({ ok: true, at: expect.any(Number) }));
+    expect(await rating.getValue()).toMatchObject({ successes: 1, lastOk: true });
   });
 
   it('pauses after the current step, resumes, and stops', async () => {
@@ -150,6 +151,8 @@ describe('replay', () => {
   it('waits for the user to choose a file, and skips a failing step', async () => {
     const file: Step = { id: 'f', label: 'Upload a file to "Resume"', locators: [], action: 'upload' };
     await save([file, click('bad'), click('c')]);
+    const { lastRuns, rating } = await import('../src/bg/state');
+    await rating.setValue({ successes: 4, lastOk: true, asked: 0, done: false });
     page = (_, msg) => (msg.type === 'play' && msg.step.id === 'bad' ? { error: 'missing' } : { ok: true });
     await r.play('m', 1);
     expect((await until('waiting')).message).toContain('choose the file for **Resume**');
@@ -157,6 +160,8 @@ describe('replay', () => {
     await until('failed');
     await r.skip();
     expect((await until('done')).status).toEqual(['done', 'skipped', 'done']);
+    await vi.waitFor(async () => expect((await lastRuns.getValue()).m?.ok).toBe(true));
+    expect(await rating.getValue()).toMatchObject({ successes: 4, lastOk: false });
   });
 
   it('saves the element the user picks for a failing step and retries it', async () => {

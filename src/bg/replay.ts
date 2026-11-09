@@ -3,7 +3,8 @@ import { storage } from 'wxt/utils/storage';
 import type { Target } from '../core/locator';
 import type { Step } from '../core/macro';
 import { describeTarget, NOT_LOADED, PAGE_LOST, PAGE_NOT_READY, stepError, type PageStep, type PlayResult } from '../core/player';
-import { lastRuns, macros, updateMacros } from './state';
+import { recordRun } from '../core/rating';
+import { lastRuns, macros, rating, updateMacros } from './state';
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped';
 
@@ -65,6 +66,8 @@ const patch = (id: string, fn: (r: Run) => Partial<Run> | null) =>
     await run.setValue(next);
     if (next.state !== r.state && (next.state === 'done' || next.state === 'failed')) {
       const last = next.state === 'done' ? { ok: true, at: Date.now() } : { ok: false, at: Date.now(), step: next.index + 1 };
+      // Only a replay with every step played counts as a success.
+      await rating.setValue(recordRun(await rating.getValue(), next.status.every((s) => s === 'done')));
       await lastRuns.setValue({ ...(await lastRuns.getValue()), [next.macroId]: last });
     }
     return next;

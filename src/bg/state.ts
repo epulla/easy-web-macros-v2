@@ -1,5 +1,6 @@
 import { storage } from 'wxt/utils/storage';
 import { applyEdit, migrate, type Macro, type MacroEdit, type V1Collection } from '../core/macro';
+import { NO_RATING, type Rating } from '../core/rating';
 
 // First run after a v1 update builds macros from v1 `collections`, which stays untouched.
 export const macros = storage.defineItem<Macro[]>('local:macros', {
@@ -31,3 +32,6 @@ export interface LastRun {
   step?: number;
 }
 export const lastRuns = storage.defineItem<Record<string, LastRun>>('local:lastRuns', { fallback: {} });
+
+// Progress toward the popup's "rate us" prompt.
+export const rating = storage.defineItem<Rating>('local:rating', { fallback: NO_RATING });
