@@ -1,4 +1,4 @@
-export const LOCATOR_KINDS = ['id', 'testId', 'role', 'text', 'label', 'css', 'xpath'] as const;
+export const LOCATOR_KINDS = ['id', 'testId', 'role', 'text', 'label', 'css', 'xpath', 'count'] as const;
 export type LocatorKind = (typeof LOCATOR_KINDS)[number];
 
 export interface Locator {
@@ -10,7 +10,8 @@ interface StepBase {
   id: string;
   label: string;
   locators: Locator[];
-  // Locators for each shadow host / iframe around the target, outermost first.
+  // Locators for each shadow host / iframe around the target, outermost first. A `count`
+  // entry marks a position-only host: replay needs the same number of same-tag hosts.
   scope?: Locator[][];
 }
 

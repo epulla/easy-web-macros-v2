@@ -115,6 +115,8 @@ function matchIn(root: Root, { kind, value }: Locator): Element[] {
     }
     case 'xpath':
       return root.nodeType === 9 ? evaluateXPath(root, value) : [];
+    case 'count':
+      return [];
   }
 }
 
@@ -216,11 +218,16 @@ function candidates(el: Element): Locator[] {
   return out;
 }
 
+const NOT_FOUND = "Couldn't find this element on the page.";
+const isPositional = (l: Locator) => l.kind === 'css' || l.kind === 'xpath';
+const countSameTag = (el: Element, space: Root[]) => space.flatMap((root) => query(root, tag(el))).length;
+const COUNT_CHANGED = "The page now has a different number of these sections, so I can't tell which one to use.";
+
 // Position-based locators hit a neighbour once the target is gone, so they only
 // apply when nothing else was recorded (e.g. migrated v1 steps).
 function resolve(locators: Locator[], space: Root[]): Element | null {
-  const semantic = locators.filter((l) => l.kind !== 'css' && l.kind !== 'xpath');
-  for (const l of semantic.length ? semantic : locators) {
+  const semantic = locators.filter((l) => !isPositional(l) && l.kind !== 'count');
+  for (const l of semantic.length ? semantic : locators.filter(isPositional)) {
     const found = match(space, l);
     if (found.length === 1) return found[0]!;
   }
@@ -232,15 +239,18 @@ export interface Target {
   scope?: Locator[][];
 }
 
-export function findElement({ locators, scope = [] }: Target, doc: Document = document): Element | null {
+// Returns the element, or why it can't be used yet.
+function locate({ locators, scope = [] }: Target, doc: Document): Element | string {
   let space = roots(doc);
   for (const hostLocators of scope) {
     const host = resolve(hostLocators, space);
+    const count = hostLocators.find((l) => l.kind === 'count');
+    if (host && count && countSameTag(host, space) !== Number(count.value)) return COUNT_CHANGED;
     const inner = host && innerRoot(host);
-    if (!inner) return null;
+    if (!inner) return NOT_FOUND;
     space = roots(inner);
   }
-  return resolve(locators, space);
+  return resolve(locators, space) ?? NOT_FOUND;
 }
 
 const isVisible = (el: Element) => el.checkVisibility({ visibilityProperty: true });
@@ -258,10 +268,10 @@ export async function waitForElement(
 ): Promise<Element> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const el = findElement(target, doc);
-    if (el && isVisible(el) && isEnabled(el)) return el;
+    const el = locate(target, doc);
+    if (typeof el !== 'string' && isVisible(el) && isEnabled(el)) return el;
     if (Date.now() >= deadline) {
-      if (!el) throw new Error("Couldn't find this element on the page.");
+      if (typeof el === 'string') throw new Error(el);
       throw new Error(isVisible(el) ? 'This element is turned off (disabled).' : 'This element is hidden.');
     }
     await new Promise((r) => setTimeout(r, 100));
@@ -282,7 +292,9 @@ export function captureTarget(el: Element): Target {
   let space = roots((hosts[0] ?? el).ownerDocument);
   const scope: Locator[][] = [];
   for (const host of hosts) {
-    scope.push(uniqueLocators(host, space));
+    const hostLocators = uniqueLocators(host, space);
+    if (hostLocators.every(isPositional)) hostLocators.push({ kind: 'count', value: String(countSameTag(host, space)) });
+    scope.push(hostLocators);
     space = roots(innerRoot(host)!);
   }
   const locators = uniqueLocators(el, space);

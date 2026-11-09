@@ -156,6 +156,22 @@ describe('frames and shadow DOM', () => {
     await expect(waitForElement(captureTarget(button), { timeoutMs: 0 })).resolves.toBe(button);
   });
 
+  it('replays a position-only widget only while the widget count is unchanged', async () => {
+    document.body.innerHTML = '<x-card></x-card><x-card></x-card>';
+    for (const host of document.querySelectorAll('x-card')) {
+      host.attachShadow({ mode: 'open' }).innerHTML = '<button id="submit">Submit</button>';
+    }
+    const first = $('x-card').shadowRoot!.querySelector('button')!;
+
+    const target = captureTarget(first);
+    expect(target.scope![0]).toContainEqual({ kind: 'count', value: '2' });
+    await expect(waitForElement(target, { timeoutMs: 0 })).resolves.toBe(first);
+    $('x-card').remove();
+    await expect(waitForElement(target, { timeoutMs: 0 })).rejects.toThrow(
+      "The page now has a different number of these sections, so I can't tell which one to use.",
+    );
+  });
+
   it('tells apart identical widgets by their host', async () => {
     document.body.innerHTML = '<x-card data-card="a"></x-card><x-card data-card="b"></x-card>';
     for (const host of document.querySelectorAll('x-card')) {
