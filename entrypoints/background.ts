@@ -1,5 +1,6 @@
 import { addOp, firstPage, hello, recording, startRecording, stopRecording } from '../src/bg/recording';
 import { pageLoaded, pause, pickAgain, play, proceed, resume, resumeRun, run, skip, stopRun } from '../src/bg/replay';
+import { welcomePage } from '../src/bg/welcome';
 import type { RecordOp } from '../src/core/recorder';
 
 export type ToBackground =
@@ -34,6 +35,11 @@ export default defineBackground(() => {
   recording.watch(showBadge);
   run.watch(showBadge);
   void resumeRun();
+
+  browser.runtime.onInstalled.addListener((details) => {
+    const page = welcomePage(details);
+    if (page) void browser.tabs.create({ url: browser.runtime.getURL(page) });
+  });
 
   browser.runtime.onMessage.addListener((msg: ToBackground, sender) => {
     if (msg.type === 'start') return startRecording(msg.tabId, msg.hover);
