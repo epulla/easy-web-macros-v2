@@ -19,7 +19,7 @@ const typeInto = (el: HTMLInputElement, text: string) => {
 };
 const key = (el: Element, key: string, mods: KeyboardEventInit = {}) =>
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...mods }));
-const change = (el: Element) => el.dispatchEvent(new Event('change', { bubbles: true }));
+const input = (el: Element) => el.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
 
 beforeEach(() => {
   ops = [];
@@ -72,6 +72,28 @@ describe('record', () => {
     expect(JSON.stringify(ops)).not.toContain('hunter');
   });
 
+  it('keeps hiding a password after "show password" turns the field into text', () => {
+    document.body.innerHTML = '<input id="pw" type="password" aria-label="Password" />';
+    start();
+    typeInto($('#pw'), 'hunter');
+    $<HTMLInputElement>('#pw').type = 'text';
+    typeInto($('#pw'), '2');
+    expect(brief()).toEqual([{ action: 'type', label: 'Type password in "Password"', value: '', secret: true }]);
+    expect(JSON.stringify(ops)).not.toContain('hunter');
+  });
+
+  it('records a choice inside a shadow root', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    host.attachShadow({ mode: 'open' }).innerHTML = '<select aria-label="Size"><option value="s">Small</option><option value="l">Large</option></select>';
+    const select = host.shadowRoot!.querySelector('select')!;
+    start();
+    select.value = 'l';
+    input(select);
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(brief()).toEqual([{ action: 'select', label: 'Choose "Large" in "Size"', value: 'l' }]);
+  });
+
   it('starts a new type step after another action', () => {
     start();
     typeInto($('#email'), 'a');
@@ -83,13 +105,13 @@ describe('record', () => {
   it('records a select choice', () => {
     start();
     $<HTMLSelectElement>('#country').value = 'pe';
-    change($('#country'));
+    input($('#country'));
     expect(brief()).toEqual([{ action: 'select', label: 'Choose "Peru" in "Country"', value: 'pe' }]);
   });
 
   it('records checkbox and radio changes, not the clicks behind them', () => {
     start();
-    // jsdom, like Chrome, forwards the label click to the box, which toggles it and fires change.
+    // jsdom, like Chrome, forwards the label click to the box, which toggles it and fires input.
     click($('label:has(#agree)'));
     click($('#plan-a'));
     expect(brief()).toEqual([
@@ -153,7 +175,7 @@ describe('record', () => {
   it('records a file upload as a placeholder step', () => {
     start();
     click($('#cv'));
-    change($('#cv'));
+    input($('#cv'));
     expect(brief()).toEqual([{ action: 'upload', label: 'Upload a file to "Resume"' }]);
   });
 

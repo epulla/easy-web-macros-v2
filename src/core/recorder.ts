@@ -83,22 +83,24 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
     }
   };
 
-  const onInput = (e: Event) => {
+  // Fields that were ever password fields, so a "show password" toggle doesn't expose the value.
+  const passwords = new WeakSet<Element>();
+  const notePassword = (e: Event) => {
     const el = targetOf(e);
-    if (!el || !isTextEntry(el)) return;
-    // Password values are never stored, even after a "show password" toggle turns the field into text.
-    if (el.matches('input[type=password],input[autocomplete$=password]')) {
-      put(el, { action: 'type', label: `Type password in ${describe(el)}`, value: '', secret: true });
-      return;
-    }
-    const value = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ? (el as HTMLInputElement).value : (el.textContent ?? '');
-    put(el, { action: 'type', label: `Type in ${describe(el)}`, value, secret: false });
+    if (el?.matches('input[type=password],input[autocomplete$=password]')) passwords.add(el);
   };
 
-  const onChange = (e: Event) => {
+  // `input` (unlike `change`) crosses shadow roots, and fires for every control kind.
+  const onInput = (e: Event) => {
     const el = targetOf(e);
     if (!el) return;
-    if (el.tagName === 'SELECT') {
+    notePassword(e);
+    if (passwords.has(el)) {
+      put(el, { action: 'type', label: `Type password in ${describe(el)}`, value: '', secret: true });
+    } else if (isTextEntry(el)) {
+      const value = el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ? (el as HTMLInputElement).value : (el.textContent ?? '');
+      put(el, { action: 'type', label: `Type in ${describe(el)}`, value, secret: false });
+    } else if (el.tagName === 'SELECT') {
       const select = el as HTMLSelectElement;
       const option = select.selectedOptions[0]?.text.trim() ?? '';
       put(el, { action: 'select', label: `Choose "${option}" in ${describe(el)}`, value: select.value });
@@ -153,8 +155,8 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
   const listeners: [string, EventListener][] = [
     ['click', onClick as EventListener],
     ['dblclick', onDblClick as EventListener],
+    ['focusin', notePassword],
     ['input', onInput],
-    ['change', onChange],
     ['keydown', onKey as EventListener],
     ['scroll', onScroll],
   ];
