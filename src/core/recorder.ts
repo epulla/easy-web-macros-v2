@@ -18,6 +18,14 @@ const ACTIVATES = 'button,a[href],input[type=submit],input[type=button],input[ty
 const MODIFIERS = ['Control', 'Shift', 'Alt', 'Meta'];
 const NAMED_KEYS = ['Enter', 'Tab', 'Escape'];
 const PASSWORD = 'input[type=password],input[autocomplete$=password]';
+const PASSWORD_NAME = /password|passwd|passcode|passphrase|\bpass\b|pwd|\bpin\b|contraseñ|clave/i;
+
+// Also by name: a field revealed before we ever saw it as a password (e.g. a widget
+// built after recording started) still reads as one.
+const isPassword = (el: Element) =>
+  el.matches(PASSWORD) ||
+  (el.tagName === 'INPUT' &&
+    PASSWORD_NAME.test([el.id, el.getAttribute('name'), el.getAttribute('placeholder'), nameOf(el)].join(' ')));
 
 const isTextEntry = (el: Element) =>
   el.tagName === 'TEXTAREA' ||
@@ -88,7 +96,7 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
   const passwords = new WeakSet<Element>();
   const notePassword = (e: Event) => {
     const el = targetOf(e);
-    if (el?.matches(PASSWORD)) passwords.add(el);
+    if (el && isPassword(el)) passwords.add(el);
   };
   // Catches a toggle on a field the user never touched (e.g. filled in by the browser),
   // in the page and in every open shadow root, which a document observer doesn't see.
@@ -96,7 +104,7 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
   const scan = (node: Element | Document | ShadowRoot) => {
     const els = node instanceof Element ? [node, ...node.querySelectorAll('*')] : [...node.querySelectorAll('*')];
     for (const el of els) {
-      if (el.matches(PASSWORD)) passwords.add(el);
+      if (isPassword(el)) passwords.add(el);
       if (el.shadowRoot) watch(el.shadowRoot);
     }
   };
@@ -118,6 +126,8 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
   const onInput = (e: Event) => {
     const el = targetOf(e);
     if (!el) return;
+    const root = el.getRootNode();
+    if (root instanceof ShadowRoot) watch(root);
     notePassword(e);
     if (passwords.has(el)) {
       put(el, { action: 'type', label: `Type password in ${describe(el)}`, value: '', secret: true });

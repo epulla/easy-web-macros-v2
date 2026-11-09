@@ -114,6 +114,27 @@ describe('record', () => {
     expect(JSON.stringify(ops)).not.toContain('hunter');
   });
 
+  it('hides a password in a shadow root attached to an existing element after recording started', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    start();
+    host.attachShadow({ mode: 'open' }).innerHTML = '<input type="password" aria-label="Password" value="hunter" />';
+    const pw = host.shadowRoot!.querySelector('input')!;
+    pw.type = 'text';
+    await Promise.resolve();
+    pw.value += '2';
+    input(pw);
+    expect(brief()).toEqual([{ action: 'type', label: 'Type password in "Password"', value: '', secret: true }]);
+    expect(JSON.stringify(ops)).not.toContain('hunter');
+  });
+
+  it('still records fields whose names only look similar, like a passport number', () => {
+    document.body.innerHTML = '<input id="passport" aria-label="Passport number" />';
+    start();
+    typeInto($('#passport'), 'A123');
+    expect(brief()).toEqual([{ action: 'type', label: 'Type in "Passport number"', value: 'A123', secret: false }]);
+  });
+
   it('records a choice inside a shadow root', () => {
     const host = document.createElement('div');
     document.body.append(host);
