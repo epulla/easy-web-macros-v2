@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { exportMacro, importMacro, migrate } from '../src/core/macro';
+import { duplicateStep, exportMacro, importMacro, migrate, moveStep } from '../src/core/macro';
 import v1 from './fixtures/v1-storage.json';
 
 const v1Export = readFileSync(new URL('./fixtures/Login.em.json', import.meta.url), 'utf8');
@@ -17,6 +17,11 @@ describe('importMacro', () => {
     const macro = importMacro(exportMacro(login!));
     expect(macro).toEqual({ ...login, id: expect.any(String) });
     expect(macro.id).not.toBe(login!.id);
+  });
+
+  it('round-trips a macro edited in the editor', () => {
+    const edited = { ...login!, name: 'Renamed', delayMs: 250, runs: 3, loop: true, steps: moveStep(duplicateStep(login!.steps, 0), 0, 1) };
+    expect(importMacro(exportMacro(edited))).toEqual({ ...edited, id: expect.any(String) });
   });
 
   it('keeps a step scope from a v2 file', () => {

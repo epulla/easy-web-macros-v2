@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { macros as macrosItem } from '../../src/bg/state';
-import { duplicateStep, LOCATOR_KINDS, moveStep, type LocatorKind, type Macro, type Step } from '../../src/core/macro';
+import { duplicateStep, exportMacro, importMacro, LOCATOR_KINDS, moveStep, type LocatorKind, type Macro, type Step } from '../../src/core/macro';
 import '../../assets/tailwind.css';
 
 const ACTION: Record<Step['action'], string> = {
@@ -69,13 +69,36 @@ function Options() {
 
   const macro = macros.find((m) => m.id === selected) ?? macros[0];
 
+  const importFile = async (file: File) => {
+    try {
+      const added = importMacro(await file.text());
+      save((ms) => [...ms, added]);
+      select(added.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "This file isn't a macro file.");
+    }
+  };
+
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
       <header className="flex items-center gap-3">
         <span aria-hidden className="reel" />
         <h1 className="text-xl font-semibold tracking-wide">Easy Web Macros</h1>
         <span aria-hidden className="reel" />
-        <p className="text-muted">Edit your macros. Changes are saved as you go.</p>
+        <p className="flex-1 text-muted">Edit your macros. Changes are saved as you go.</p>
+        <label className="btn cursor-pointer focus-within:outline-2 focus-within:outline-rec">
+          Add a macro from a file
+          <input
+            type="file"
+            accept=".json,application/json"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void importFile(file);
+            }}
+          />
+        </label>
       </header>
       {error && (
         <p role="alert" className="text-rec">
@@ -252,7 +275,19 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
         </ol>
       </div>
 
-      <div className="border-t pt-3">
+      <div className="flex flex-wrap gap-2 border-t pt-3">
+        <button
+          className="btn"
+          onClick={() => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([exportMacro(macro)], { type: 'application/json' }));
+            a.download = `${macro.name.replace(/[\\/:*?"<>|]+/g, '-').trim() || 'macro'}.json`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          }}
+        >
+          Save to a file
+        </button>
         <button className="btn text-rec" onClick={() => confirm(`Delete "${macro.name}"? This can't be undone.`) && remove()}>
           Delete this macro
         </button>
