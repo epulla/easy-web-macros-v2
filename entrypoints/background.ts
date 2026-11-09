@@ -1,6 +1,8 @@
 import { addOp, firstPage, hello, recording, startRecording, stopRecording } from '../src/bg/recording';
 import { pageLoaded, pause, pickAgain, play, proceed, resume, resumeRun, run, skip, stopRun } from '../src/bg/replay';
 import { welcomePage } from '../src/bg/welcome';
+import { addMacro, deleteMacro, saveMacro } from '../src/bg/state';
+import type { Macro } from '../src/core/macro';
 import type { RecordOp } from '../src/core/recorder';
 
 export type ToBackground =
@@ -15,7 +17,10 @@ export type ToBackground =
   | { type: 'stop-run' }
   | { type: 'skip' }
   | { type: 'proceed'; value?: string }
-  | { type: 'pick' };
+  | { type: 'pick' }
+  | { type: 'save-macro'; macro: Macro }
+  | { type: 'add-macro'; macro: Macro }
+  | { type: 'delete-macro'; id: string };
 
 const showBadge = async () => {
   const [rec, r] = await Promise.all([recording.getValue(), run.getValue()]);
@@ -51,6 +56,9 @@ export default defineBackground(() => {
     if (msg.type === 'skip') return skip();
     if (msg.type === 'proceed') return proceed(msg.value);
     if (msg.type === 'pick') return void pickAgain();
+    if (msg.type === 'save-macro') return saveMacro(msg.macro);
+    if (msg.type === 'add-macro') return addMacro(msg.macro);
+    if (msg.type === 'delete-macro') return deleteMacro(msg.id);
     const tabId = sender.tab?.id;
     if (tabId === undefined) return;
     if (msg.type === 'hello' && msg.top) pageLoaded(tabId, sender.tab?.openerTabId);

@@ -3,7 +3,7 @@ import { storage } from 'wxt/utils/storage';
 import type { Target } from '../core/locator';
 import type { Step } from '../core/macro';
 import { describeTarget, NOT_LOADED, PAGE_LOST, PAGE_NOT_READY, stepError, type PageStep, type PlayResult } from '../core/player';
-import { lastRuns, macros } from './state';
+import { lastRuns, macros, updateMacros } from './state';
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped';
 
@@ -303,7 +303,7 @@ export async function pickAgain() {
     if (c?.id !== r.id || gen !== g) return false;
     cancel(c);
     await run.setValue({ ...c, steps: c.steps.map(fix), state: 'running', message: '' });
-    await macros.setValue((await macros.getValue()).map((m) => (m.id === r.macroId ? { ...m, steps: m.steps.map(fix) } : m)));
+    await updateMacros((ms) => ms.map((m) => (m.id === r.macroId ? { ...m, steps: m.steps.map(fix) } : m)));
     return true;
   });
   if (saved) void loop();

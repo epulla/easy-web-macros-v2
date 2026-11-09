@@ -2,7 +2,7 @@ import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
 import { DEFAULTS, type Step } from '../core/macro';
 import { applyOp, type RecordOp } from '../core/recorder';
-import { macros } from './state';
+import { updateMacros } from './state';
 
 export interface Recording {
   tabs: number[];
@@ -43,7 +43,7 @@ export const stopRecording = () =>
     // Save first: if saving fails, the recording stays so Stop can be tried again.
     if (r.steps.length) {
       const name = `New macro ${new Date().toLocaleString()}`;
-      await macros.setValue([...(await macros.getValue()), { id: crypto.randomUUID(), name, steps: r.steps, ...DEFAULTS }]);
+      await updateMacros((ms) => [...ms, { id: crypto.randomUUID(), name, steps: r.steps, ...DEFAULTS }]);
     }
     await recording.setValue(null);
     for (const tab of r.tabs) browser.tabs.sendMessage(tab, { type: 'stop' } satisfies ToContent).catch(() => {});

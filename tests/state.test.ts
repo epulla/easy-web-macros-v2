@@ -34,3 +34,18 @@ describe('macros storage', () => {
     expect(await fakeBrowser.storage.local.get('collections')).toEqual(raw);
   });
 });
+
+describe('macro writes', () => {
+  beforeEach(() => fakeBrowser.reset());
+
+  const macro = (id: string, name = id) => ({ id, name, steps: [], delayMs: 0, runs: 1, loop: false });
+
+  it('keeps a recording saved while an edit is on its way, and never brings back a deleted macro', async () => {
+    const { macros, updateMacros, saveMacro, deleteMacro } = await loadState();
+    await macros.setValue([macro('a'), macro('b')]);
+
+    await Promise.all([updateMacros((ms) => [...ms, macro('rec')]), saveMacro(macro('a', 'Renamed')), deleteMacro('b'), saveMacro(macro('b', 'Late edit'))]);
+
+    expect(await macros.getValue()).toEqual([macro('a', 'Renamed'), macro('rec')]);
+  });
+});
