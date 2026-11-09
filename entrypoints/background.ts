@@ -1,5 +1,5 @@
-import { addOp, firstPage, hello, recording, startRecording, stopRecording, type Recording } from '../src/bg/recording';
-import { pageLoaded, pause, play, resume, resumeRun, stopRun } from '../src/bg/replay';
+import { addOp, firstPage, hello, recording, startRecording, stopRecording } from '../src/bg/recording';
+import { pageLoaded, pause, play, resume, resumeRun, run, stopRun } from '../src/bg/replay';
 import type { RecordOp } from '../src/core/recorder';
 
 export type ToBackground =
@@ -13,14 +13,23 @@ export type ToBackground =
   | { type: 'resume' }
   | { type: 'stop-run' };
 
-const showBadge = (r: Recording | null) => {
-  void browser.action.setBadgeText({ text: r ? 'REC' : '' });
-  void browser.action.setBadgeBackgroundColor({ color: '#e11d48' });
+const showBadge = async () => {
+  const [rec, r] = await Promise.all([recording.getValue(), run.getValue()]);
+  const [text, color] = rec
+    ? ['REC', '#e11d48']
+    : r?.state === 'running'
+      ? ['▶', '#2563eb']
+      : r?.state === 'failed'
+        ? ['!', '#d97706']
+        : ['', '#e11d48'];
+  void browser.action.setBadgeText({ text });
+  void browser.action.setBadgeBackgroundColor({ color });
 };
 
 export default defineBackground(() => {
-  void recording.getValue().then(showBadge);
+  void showBadge();
   recording.watch(showBadge);
+  run.watch(showBadge);
   void resumeRun();
 
   browser.runtime.onMessage.addListener((msg: ToBackground, sender) => {
