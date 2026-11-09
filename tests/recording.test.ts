@@ -64,6 +64,27 @@ describe('recording', () => {
     expect((await r.recording.getValue())?.steps.map((s) => s.id)).toEqual(['a']);
   });
 
+  it('marks a new tab even when one of its frames loads first', async () => {
+    const r = await load();
+    await r.startRecording(1);
+    expect(await r.hello(2, { url: 'https://ads.io/frame', top: false, openerTabId: 1 })).toEqual({ hover: false });
+    await r.hello(2, { url: 'https://a.io/report', top: true, openerTabId: 1 });
+    expect((await r.recording.getValue())?.steps).toEqual([expect.objectContaining({ url: 'https://a.io/report', newTab: true })]);
+  });
+
+  it('keeps the recording when saving the macro fails', async () => {
+    const r = await load();
+    await r.startRecording(1);
+    await r.addOp(1, { op: 'put', step: step('a') });
+    const { macros } = await import('../src/bg/state');
+    vi.spyOn(macros, 'setValue').mockRejectedValueOnce(new Error('quota'));
+
+    await expect(r.stopRecording()).rejects.toThrow('quota');
+    expect((await r.recording.getValue())?.steps.map((s) => s.id)).toEqual(['a']);
+    await r.stopRecording();
+    expect((await macros.getValue()).map((m) => m.steps.length)).toEqual([1]);
+  });
+
   it("doesn't start on a page it can't record", async () => {
     fakeBrowser.tabs.sendMessage = vi.fn(async () => Promise.reject(new Error('no receiver'))) as never;
     const r = await load();

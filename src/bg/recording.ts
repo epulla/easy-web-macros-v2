@@ -40,11 +40,13 @@ export const startRecording = (tabId: number, hover = false) =>
 export const stopRecording = () =>
   update(async (r) => {
     if (!r) return;
+    // Save first: if saving fails, the recording stays so Stop can be tried again.
+    if (r.steps.length) {
+      const name = `New macro ${new Date().toLocaleString()}`;
+      await macros.setValue([...(await macros.getValue()), { id: crypto.randomUUID(), name, steps: r.steps, ...DEFAULTS }]);
+    }
     await recording.setValue(null);
     for (const tab of r.tabs) browser.tabs.sendMessage(tab, { type: 'stop' } satisfies ToContent).catch(() => {});
-    if (!r.steps.length) return;
-    const name = `New macro ${new Date().toLocaleString()}`;
-    await macros.setValue([...(await macros.getValue()), { id: crypto.randomUUID(), name, steps: r.steps, ...DEFAULTS }]);
   });
 
 export const addOp = (tabId: number, op: RecordOp) =>
@@ -82,9 +84,8 @@ export const hello = (tabId: number, { url, top, openerTabId }: Page) =>
     if (!r) return null;
     const joins = !r.tabs.includes(tabId);
     if (joins && (openerTabId === undefined || !r.tabs.includes(openerTabId))) return null;
-    let next = joins ? { ...r, tabs: [...r.tabs, tabId] } : r;
-    if (top) next = visit(next, url, joins);
-    await recording.setValue(next);
+    // Only the top frame adds the tab, so a frame loading first can't hide that it's a new tab.
+    if (top) await recording.setValue(visit(joins ? { ...r, tabs: [...r.tabs, tabId] } : r, url, joins));
     return { hover: r.hover };
   });
 

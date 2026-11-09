@@ -31,9 +31,13 @@ function Popup() {
             <span aria-hidden className="size-2.5 rounded-full bg-rose-600" />
             Recording · {rec.steps.length} {rec.steps.length === 1 ? 'step' : 'steps'}
           </p>
-          <button className="rounded bg-neutral-900 px-3 py-2 text-white" onClick={() => void send({ type: 'stop' })}>
+          <button
+            className="rounded bg-neutral-900 px-3 py-2 text-white"
+            onClick={() => send({ type: 'stop' }).then(() => setError(''), () => setError("Couldn't save the macro. Your steps are kept; try Stop and save again."))}
+          >
             Stop and save
           </button>
+          {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         </>
       ) : (
         <>
