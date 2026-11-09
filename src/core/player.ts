@@ -7,6 +7,8 @@ export type PageStep = Exclude<Step, { action: 'navigate' }>;
 export const NO_OPTION = "This list doesn't have the recorded option anymore.";
 export const PAGE_NOT_READY = "This page isn't ready for playback.";
 export const NOT_LOADED = "The page didn't finish loading.";
+export const ACTION_FAILED = "The page didn't accept the action.";
+const CANCELLED = 'cancelled';
 
 const NOUNS: Record<string, string> = {
   button: 'button',
@@ -44,6 +46,7 @@ export function stepError(n: number, step: Step, reason: string): string {
     [COUNT_CHANGED]: `the page has a different number of sections than when you recorded, so I can't tell which ${what.replace(/^the /, '')} to use.`,
     [NO_OPTION]: `${what} doesn't have the option you picked anymore.`,
     [PAGE_NOT_READY]: 'this page isn\'t ready for playback. Reload the page, then press Try again.',
+    [ACTION_FAILED]: `couldn't use ${what}; the page didn't accept the action. Press Try again, or pick it on the page.`,
     [NOT_LOADED]: "the page didn't finish loading. Check your connection, then press Try again.",
   };
   return `Step ${n}: ${said[reason] ?? reason}`;
@@ -133,23 +136,23 @@ function act(el: Element, step: PageStep, value?: string) {
   }
 }
 
-// Answers before acting: a click that leaves the page would otherwise drop the reply.
-export async function play(step: PageStep, value?: string, doc = document): Promise<PlayResult> {
+// A click that leaves the page can drop the reply; the background counts that as done.
+export async function play(step: PageStep, value?: string, signal?: AbortSignal, doc = document): Promise<PlayResult> {
+  const aborted = new Promise<never>((_, reject) => signal?.addEventListener('abort', () => reject(new Error(CANCELLED))));
+  aborted.catch(() => {});
   let el: Element;
   try {
-    el = await waitForElement(step, { doc });
+    el = await Promise.race([waitForElement(step, { doc }), aborted]);
   } catch (e) {
     return { error: (e as Error).message };
   }
   if (step.action === 'select' && ![...(el as HTMLSelectElement).options].some((o) => o.value === step.value)) {
     return { error: NO_OPTION };
   }
-  setTimeout(() => {
-    try {
-      act(el, step, value);
-    } catch {
-      // The page changed under us; the next step reports what's missing.
-    }
-  });
+  try {
+    act(el, step, value);
+  } catch {
+    return { error: ACTION_FAILED };
+  }
   return { ok: true };
 }

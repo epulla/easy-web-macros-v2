@@ -33,12 +33,21 @@ export type ToPage =
   | { type: 'play'; step: PageStep; value?: string }
   | { type: 'where' }
   | { type: 'pick' }
-  | { type: 'pick-end' };
+  | { type: 'cancel' };
 
 const FOLLOW_MS = 10_000;
 const LOAD_MS = 30_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Bumped whenever the user changes course (new run, stop, skip, retry), so work started
+// before that stops waiting and can't act or report anymore.
+let gen = 0;
+function cancel(r: Run | null) {
+  gen++;
+  if (r) void browser.tabs.sendMessage(r.tabId, { type: 'cancel' } satisfies ToPage).catch(() => {});
+}
+const CANCELLED = { error: 'cancelled' } as const;
 
 let queue: Promise<unknown> = Promise.resolve();
 function update<T>(fn: (r: Run | null) => Promise<T> | T): Promise<T> {
@@ -48,10 +57,11 @@ function update<T>(fn: (r: Run | null) => Promise<T> | T): Promise<T> {
 }
 
 // Only touches the run it was started for, so a stopped or replaced run stays untouched.
-const patch = (id: string, fn: (r: Run) => Partial<Run>) =>
+const patch = (id: string, fn: (r: Run) => Partial<Run> | null) =>
   update(async (r) => {
-    if (r?.id !== id) return null;
-    const next = { ...r, ...fn(r) };
+    const changes = r?.id === id ? fn(r) : null;
+    if (!r || !changes) return null;
+    const next = { ...r, ...changes };
     await run.setValue(next);
     return next;
   });
@@ -63,24 +73,29 @@ export function pageLoaded(tabId: number, openerTabId?: number) {
   if (pages.length > 50) pages.shift();
 }
 
-async function waitFor<T>(find: () => T | undefined, ms: number): Promise<T | undefined> {
+async function waitFor<T>(g: number, find: () => T | undefined, ms: number): Promise<T | undefined> {
   const deadline = Date.now() + ms;
   for (;;) {
     const found = find();
-    if (found !== undefined || Date.now() >= deadline) return found;
+    if (found !== undefined || gen !== g || Date.now() >= deadline) return found;
     await sleep(100);
   }
 }
-const loadedSince = (tabId: number, at: number, ms: number) =>
-  waitFor(() => pages.find((p) => p.tabId === tabId && p.at >= at), ms);
+const loadedSince = (g: number, tabId: number, at: number, ms: number) =>
+  waitFor(g, () => pages.find((p) => p.tabId === tabId && p.at >= at), ms);
 
-// Right after a page change the new page may not be listening yet.
-async function sendToPage(tabId: number, msg: ToPage, ms = 15_000): Promise<unknown> {
+const NO_RECEIVER = /Receiving end does not exist|Could not establish connection/;
+
+// Right after a page change the new page may not be listening yet. Any other failure
+// means the page went away after getting the message (e.g. the click left the page).
+async function sendToPage(g: number, tabId: number, msg: ToPage, ms = 15_000): Promise<unknown> {
   const deadline = Date.now() + ms;
   for (;;) {
+    if (gen !== g) return CANCELLED;
     try {
       return await browser.tabs.sendMessage(tabId, msg, { frameId: 0 });
     } catch (e) {
+      if (!NO_RECEIVER.test(String(e))) return { ok: true };
       if (Date.now() >= deadline) throw e;
       await sleep(300);
     }
@@ -96,31 +111,33 @@ type Outcome = ({ ok: true; tabId?: number } | { error: string } | { ask: string
 // A password typed for the current step; kept in memory only, never saved.
 let given: { runId: string; index: number; value: string } | undefined;
 
-async function navigate(r: Run, step: Extract<Step, { action: 'navigate' }>): Promise<Outcome> {
+async function navigate(g: number, r: Run, step: Extract<Step, { action: 'navigate' }>): Promise<Outcome> {
   const after = acted?.runId === r.id && acted.index === r.index - 1 ? acted.at : undefined;
   if (step.newTab) {
     const opened =
       after === undefined
         ? undefined
-        : await waitFor(() => pages.find((p) => p.at >= after && p.opener === r.tabId)?.tabId, FOLLOW_MS);
+        : await waitFor(g, () => pages.find((p) => p.at >= after && p.opener === r.tabId)?.tabId, FOLLOW_MS);
     if (opened !== undefined) return { ok: true, tabId: opened };
+    if (gen !== g) return CANCELLED;
     const at = Date.now();
     const tab = await browser.tabs.create({ url: step.url, openerTabId: r.tabId });
-    return tab.id !== undefined && (await loadedSince(tab.id, at, LOAD_MS)) ? { ok: true, tabId: tab.id } : { error: NOT_LOADED };
+    return tab.id !== undefined && (await loadedSince(g, tab.id, at, LOAD_MS)) ? { ok: true, tabId: tab.id } : { error: NOT_LOADED };
   }
-  if (after !== undefined && (await loadedSince(r.tabId, after, FOLLOW_MS))) return { ok: true };
-  if (after === undefined && (await sendToPage(r.tabId, { type: 'where' }, 0).catch(() => '')) === step.url) {
+  if (after !== undefined && (await loadedSince(g, r.tabId, after, FOLLOW_MS))) return { ok: true };
+  if (after === undefined && (await sendToPage(g, r.tabId, { type: 'where' }, 0).catch(() => '')) === step.url) {
     return { ok: true };
   }
+  if (gen !== g) return CANCELLED;
   const at = Date.now();
   await browser.tabs.update(r.tabId, { url: step.url });
-  return (await loadedSince(r.tabId, at, LOAD_MS)) ? { ok: true } : { error: NOT_LOADED };
+  return (await loadedSince(g, r.tabId, at, LOAD_MS)) ? { ok: true } : { error: NOT_LOADED };
 }
 
-async function perform(r: Run): Promise<Outcome> {
+async function perform(g: number, r: Run): Promise<Outcome> {
   const step = r.steps[r.index]!;
   try {
-    if (step.action === 'navigate') return await navigate(r, step);
+    if (step.action === 'navigate') return await navigate(g, r, step);
     const n = r.index + 1;
     let value: string | undefined;
     if (step.action === 'type' && step.secret) {
@@ -131,7 +148,7 @@ async function perform(r: Run): Promise<Outcome> {
       given = undefined;
     }
     acted = { runId: r.id, index: r.index, at: Date.now() };
-    const res = (await sendToPage(r.tabId, { type: 'play', step, value })) as PlayResult;
+    const res = (await sendToPage(g, r.tabId, { type: 'play', step, value })) as PlayResult;
     if (step.action === 'upload' && 'ok' in res) {
       return { ask: `Step ${n}: choose the file for ${describeTarget(step)} on the page, then press Continue.` };
     }
@@ -156,10 +173,13 @@ async function loop(): Promise<void> {
         continue;
       }
       const i = r.index;
+      const g = gen;
       await patch(r.id, (c) => ({ status: c.status.with(i, 'running') }));
-      const res = await perform(r);
+      const res = await perform(g, r);
       const next = await patch(r.id, (c) =>
-        'error' in res
+        gen !== g
+          ? null
+          : 'error' in res
           ? { status: c.status.with(i, 'failed'), state: 'failed', message: stepError(i + 1, c.steps[i]!, res.error) }
           : 'ask' in res
             ? { state: 'waiting', message: res.ask }
@@ -181,8 +201,9 @@ export const resumeRun = loop;
 export async function play(macroId: string, tabId: number, { from = 0, speed = 1 } = {}): Promise<boolean> {
   const macro = (await macros.getValue()).find((m) => m.id === macroId);
   if (!macro) return false;
-  await update(() =>
-    run.setValue({
+  await update((old) => {
+    cancel(old);
+    return run.setValue({
       id: crypto.randomUUID(),
       macroId,
       name: macro.name,
@@ -197,8 +218,8 @@ export async function play(macroId: string, tabId: number, { from = 0, speed = 1
       round: 1,
       runs: macro.runs,
       loop: macro.loop,
-    }),
-  );
+    });
+  });
   void loop();
   return true;
 }
@@ -208,15 +229,12 @@ export const pause = () =>
     if (r?.state === 'running') await run.setValue({ ...r, state: 'paused' });
   });
 
-const endPick = (r: Run | null) => {
-  if (r?.state === 'picking') void browser.tabs.sendMessage(r.tabId, { type: 'pick-end' } satisfies ToPage).catch(() => {});
-};
-
-// Retries the current step.
+// Continues after a pause, or retries the current step.
 export async function resume() {
   await update(async (r) => {
     if (!r || !['paused', 'failed', 'picking'].includes(r.state)) return;
-    endPick(r);
+    // A paused step may still be finishing; let it count.
+    if (r.state !== 'paused') cancel(r);
     await run.setValue({ ...r, state: 'running', message: '' });
   });
   void loop();
@@ -225,7 +243,7 @@ export async function resume() {
 export async function skip() {
   await update(async (r) => {
     if (!r || r.state === 'running' || r.state === 'done') return;
-    endPick(r);
+    cancel(r);
     await run.setValue({ ...r, status: r.status.with(r.index, 'skipped'), index: r.index + 1, state: 'running', message: '' });
   });
   void loop();
@@ -255,29 +273,34 @@ export async function pickAgain() {
     return next;
   });
   if (!r) return;
+  const g = gen;
   let target: Target;
   try {
     // Every frame listens; the one the user clicks in answers.
     target = (await browser.tabs.sendMessage(r.tabId, { type: 'pick' } satisfies ToPage)) as Target;
   } catch {
-    await patch(r.id, (c) => (c.state === 'picking' ? { state: 'failed', message: stepError(c.index + 1, c.steps[c.index]!, PAGE_NOT_READY) } : {}));
+    await patch(r.id, (c) => (gen === g ? { state: 'failed', message: stepError(c.index + 1, c.steps[c.index]!, PAGE_NOT_READY) } : null));
     return;
   }
-  void browser.tabs.sendMessage(r.tabId, { type: 'pick-end' } satisfies ToPage).catch(() => {});
   const stepId = r.steps[r.index]!.id;
   const fix = (s: Step): Step => {
     if (s.id !== stepId) return s;
     const { scope: _, ...rest } = s;
     return { ...rest, ...target } as Step;
   };
-  const updated = await patch(r.id, (c) => (c.state === 'picking' ? { steps: c.steps.map(fix), state: 'running', message: '' } : {}));
-  if (updated?.state !== 'running') return;
-  await macros.setValue((await macros.getValue()).map((m) => (m.id === r.macroId ? { ...m, steps: m.steps.map(fix) } : m)));
-  void loop();
+  // Checked inside the queue, so a retry, skip or stop pressed meanwhile wins.
+  const saved = await update(async (c) => {
+    if (c?.id !== r.id || gen !== g) return false;
+    cancel(c);
+    await run.setValue({ ...c, steps: c.steps.map(fix), state: 'running', message: '' });
+    await macros.setValue((await macros.getValue()).map((m) => (m.id === r.macroId ? { ...m, steps: m.steps.map(fix) } : m)));
+    return true;
+  });
+  if (saved) void loop();
 }
 
 export const stopRun = () =>
   update(async (r) => {
-    endPick(r);
+    cancel(r);
     await run.setValue(null);
   });

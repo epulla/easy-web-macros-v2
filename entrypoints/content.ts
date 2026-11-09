@@ -59,6 +59,7 @@ export default defineContentScript({
     const top = window === window.top;
     const send = (msg: ToBackground) => browser.runtime.sendMessage(msg);
     let stop: (() => void) | undefined;
+    let playing: AbortController | undefined;
     const end = () => {
       stop?.();
       stop = undefined;
@@ -73,10 +74,16 @@ export default defineContentScript({
       };
     };
     browser.runtime.onMessage.addListener((msg: ToContent | ToPage) => {
-      if (msg.type === 'play') return play(msg.step, msg.value);
+      if (msg.type === 'play') {
+        playing = new AbortController();
+        return play(msg.step, msg.value, playing.signal);
+      }
       if (msg.type === 'where') return Promise.resolve(location.href);
       if (msg.type === 'pick') return pick();
-      if (msg.type === 'pick-end') endPick?.();
+      if (msg.type === 'cancel') {
+        playing?.abort();
+        endPick?.();
+      }
       if (msg.type === 'start') {
         begin(msg.hover);
         if (top) void send({ type: 'started', url: location.href });

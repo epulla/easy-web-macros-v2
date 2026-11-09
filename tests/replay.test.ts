@@ -29,6 +29,7 @@ beforeEach(async () => {
   page = (tabId, msg) => (msg.type === 'play' ? (played.push([tabId, msg.step.id]), { ok: true }) : 'https://a.io/');
   fakeBrowser.tabs.sendMessage = vi.fn(async (tabId: number, msg: ToPage) => page(tabId, msg)) as never;
   fakeBrowser.tabs.update = vi.fn(async () => ({})) as never;
+  fakeBrowser.tabs.create = vi.fn(async () => ({ id: 9 })) as never;
   await load();
 });
 
@@ -163,5 +164,58 @@ describe('replay', () => {
     await until('done');
     const { macros } = await import('../src/bg/state');
     expect((await macros.getValue())[0]!.steps[0]).toEqual({ ...click('a'), locators: target.locators });
+  });
+
+  it('does nothing more once stopped while waiting for a new tab or for the page', async () => {
+    await save([click('a'), go('tab', 'https://a.io/report', true)]);
+    await r.play('m', 1);
+    await vi.waitFor(() => expect(played).toEqual([[1, 'a']]));
+    await r.stopRun();
+    await new Promise((res) => setTimeout(res, 300));
+    expect(fakeBrowser.tabs.create).not.toHaveBeenCalled();
+
+    await save([click('b')]);
+    const send = vi.fn(async () => Promise.reject(new Error('Could not establish connection. Receiving end does not exist.')));
+    fakeBrowser.tabs.sendMessage = send as never;
+    await r.play('m', 1);
+    await vi.waitFor(() => expect(send).toHaveBeenCalled());
+    await r.stopRun();
+    const calls = send.mock.calls.length;
+    await new Promise((res) => setTimeout(res, 700));
+    expect(send.mock.calls.length).toBe(calls);
+  });
+
+  it('ignores a late result from a step the user skipped', async () => {
+    await save([click('a'), click('b')]);
+    let finish!: (v: unknown) => void;
+    page = (tabId, msg) => {
+      if (msg.type !== 'play') return '';
+      played.push([tabId, msg.step.id]);
+      return msg.step.id === 'a' ? new Promise((res) => (finish = res)) : { ok: true };
+    };
+    await r.play('m', 1);
+    await vi.waitFor(() => expect(played).toEqual([[1, 'a']]));
+    await r.pause();
+    await r.skip();
+    finish({ error: 'missing' });
+    expect(await until('done')).toMatchObject({ status: ['skipped', 'done'], message: '' });
+    expect(played.map(([, id]) => id)).toEqual(['a', 'b']);
+  });
+
+  it("doesn't save a pick the user moved on from", async () => {
+    await save([{ ...click('a'), locators: [{ kind: 'id', value: 'old' }] }]);
+    let picked!: (v: unknown) => void;
+    page = (_, msg) => (msg.type === 'pick' ? new Promise((res) => (picked = res)) : msg.type === 'play' ? { error: 'missing' } : '');
+    await r.play('m', 1);
+    await until('failed');
+    void r.pickAgain();
+    await until('picking');
+    await r.resume();
+    await until('failed');
+    picked({ locators: [{ kind: 'id', value: 'new' }] });
+    await new Promise((res) => setTimeout(res, 50));
+    const { macros } = await import('../src/bg/state');
+    expect((await macros.getValue())[0]!.steps[0]!.locators).toEqual([{ kind: 'id', value: 'old' }]);
+    expect((await r.run.getValue())!.steps[0]!.locators).toEqual([{ kind: 'id', value: 'old' }]);
   });
 });
