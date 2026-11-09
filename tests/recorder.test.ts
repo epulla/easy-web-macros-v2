@@ -82,6 +82,16 @@ describe('record', () => {
     expect(JSON.stringify(ops)).not.toContain('hunter');
   });
 
+  it('keeps hiding a prefilled password revealed before it was touched', async () => {
+    document.body.innerHTML = '<input id="pw" type="password" aria-label="Password" value="hunter" />';
+    start();
+    $<HTMLInputElement>('#pw').type = 'text';
+    await Promise.resolve();
+    typeInto($('#pw'), '2');
+    expect(brief()).toEqual([{ action: 'type', label: 'Type password in "Password"', value: '', secret: true }]);
+    expect(JSON.stringify(ops)).not.toContain('hunter');
+  });
+
   it('records a choice inside a shadow root', () => {
     const host = document.createElement('div');
     document.body.append(host);

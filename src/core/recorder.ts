@@ -89,6 +89,11 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
     const el = targetOf(e);
     if (el?.matches('input[type=password],input[autocomplete$=password]')) passwords.add(el);
   };
+  // Catches a toggle on a field the user never touched (e.g. filled in by the browser).
+  const typeWatch = new MutationObserver((changes) => {
+    for (const c of changes) if (c.oldValue?.toLowerCase() === 'password') passwords.add(c.target as Element);
+  });
+  typeWatch.observe(doc, { subtree: true, attributeFilter: ['type'], attributeOldValue: true });
 
   // `input` (unlike `change`) crosses shadow roots, and fires for every control kind.
   const onInput = (e: Event) => {
@@ -166,5 +171,6 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
     for (const [type, fn] of listeners) doc.removeEventListener(type, fn, { capture: true });
     clearTimeout(scrollTimer);
     clearTimeout(hoverTimer);
+    typeWatch.disconnect();
   };
 }
