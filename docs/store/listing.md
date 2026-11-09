@@ -2,7 +2,7 @@
 
 Existing item: `cmpjcbhhaneoeekleibpfoejfieblekk` (v1 listing "easy-web-macro-extension", 0.0.6). Upload 0.1.0 as an update to this item.
 
-The store takes the **name** from the manifest `name` and the **summary** from the manifest `description` (both set in `wxt.config.ts`). The dashboard cannot override them.
+The store takes the **name** from the manifest `name` and the **summary** from the manifest `description` (both set in `wxt.config.ts`). The dashboard cannot override them. The 0.1.0 build ships the name and summary below; `short_name` and the toolbar tooltip stay "Easy Web Macros".
 
 ## Name (≤75 characters)
 

@@ -1,6 +1,6 @@
 # Easy Web Macros
 
-Record your web actions and replay them with a single click.
+Record what you do on a website once, then replay it with one click. Edit the steps and watch each one as it plays..
 
 ## Features
 
