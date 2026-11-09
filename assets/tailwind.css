@@ -72,7 +72,7 @@
   .track[data-status="failed"] { background: color-mix(in srgb, var(--color-rec) 10%, transparent); color: var(--color-rec); font-weight: 600; }
   .track[data-status="failed"]::after { position: absolute; inset: 0; content: ''; pointer-events: none; background: linear-gradient(172deg, transparent 46%, var(--color-rec) 47% 50%, transparent 51%), linear-gradient(176deg, transparent 58%, color-mix(in srgb, var(--color-rec) 60%, transparent) 59% 61%, transparent 62%); opacity: .55; }
 
-  .field { border: 1px solid var(--color-line); border-radius: .375rem; background: var(--color-panel); padding: .25rem .5rem; color: var(--color-ink); }
+  .field { border: 1px solid var(--color-muted); border-radius: .375rem; background: var(--color-panel); padding: .25rem .5rem; color: var(--color-ink); }
 }
 
 @media (prefers-reduced-motion: no-preference) {

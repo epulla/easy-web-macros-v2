@@ -157,7 +157,9 @@ function Popup() {
                     </div>
                     <div className="flex items-start gap-2">
                       <details className="min-w-0 flex-1 text-xs">
-                        <summary className="cursor-pointer text-muted">Steps</summary>
+                        <summary className="cursor-pointer text-muted">
+                          Steps<span className="sr-only"> in {m.name}</span>
+                        </summary>
                         <ol className="tracks mt-1 max-h-48 overflow-y-auto">
                           {m.steps.map((step, i) => (
                             <li key={step.id} className="track">

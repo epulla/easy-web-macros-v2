@@ -145,7 +145,9 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
   const focusAfter = useRef<string | null>(null);
 
   useEffect(() => {
-    if (focusAfter.current) document.getElementById(focusAfter.current)?.focus();
+    // An arrow at the end of the list turns off; keep focus on its partner instead.
+    const el = focusAfter.current && (document.getElementById(focusAfter.current) as HTMLButtonElement | null);
+    if (el) (el.disabled ? document.getElementById(el.id.replace(/^(up|down)/, (d) => (d === 'up' ? 'down' : 'up'))) : el)?.focus();
     focusAfter.current = null;
   });
 
@@ -250,8 +252,14 @@ function MacroEditor({ macro, change, remove }: { macro: Macro; change: (fn: (m:
                   >
                     ↓
                   </button>
-                  <button className="btn" aria-expanded={open === step.id} aria-controls={`edit-${step.id}`} onClick={() => setOpen(open === step.id ? null : step.id)}>
-                    {open === step.id ? 'Done' : 'Edit'}
+                  <button
+                    className="btn"
+                    aria-label={`Edit step ${i + 1}`}
+                    aria-expanded={open === step.id}
+                    aria-controls={`edit-${step.id}`}
+                    onClick={() => setOpen(open === step.id ? null : step.id)}
+                  >
+                    Edit
                   </button>
                   <button className="btn" aria-label={`Duplicate step ${i + 1}`} onClick={() => steps((s) => duplicateStep(s, i))}>
                     Duplicate
