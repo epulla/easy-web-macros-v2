@@ -15,3 +15,11 @@ export const shouldAsk = (r: Rating) => !r.done && r.asked < 2 && r.lastOk && r.
 
 // Each time the prompt shows, the next (and last) ask waits for 5 more successes.
 export const markAsked = (r: Rating): Rating => ({ ...r, successes: 0, asked: r.asked + 1 });
+
+// The prompt within one popup visit: shows once eligible while nothing else is on screen,
+// and closes for the visit when a replay fails or the user answers.
+export type Prompt = 'waiting' | 'showing' | 'closed';
+export function nextPrompt(p: Prompt, r: Rating, idle: boolean): Prompt {
+  if (p === 'waiting') return idle && shouldAsk(r) ? 'showing' : 'waiting';
+  return p === 'showing' && (!r.lastOk || r.done) ? 'closed' : p;
+}
