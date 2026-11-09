@@ -17,6 +17,7 @@ const NOT_TEXT = ['checkbox', 'radio', 'file', 'button', 'submit', 'reset', 'ima
 const ACTIVATES = 'button,a[href],input[type=submit],input[type=button],input[type=reset],input[type=image],summary';
 const MODIFIERS = ['Control', 'Shift', 'Alt', 'Meta'];
 const NAMED_KEYS = ['Enter', 'Tab', 'Escape'];
+const PASSWORD = 'input[type=password],input[autocomplete$=password]';
 
 const isTextEntry = (el: Element) =>
   el.tagName === 'TEXTAREA' ||
@@ -87,13 +88,31 @@ export function record(doc: Document, emit: (op: RecordOp) => void, { hover = fa
   const passwords = new WeakSet<Element>();
   const notePassword = (e: Event) => {
     const el = targetOf(e);
-    if (el?.matches('input[type=password],input[autocomplete$=password]')) passwords.add(el);
+    if (el?.matches(PASSWORD)) passwords.add(el);
   };
-  // Catches a toggle on a field the user never touched (e.g. filled in by the browser).
+  // Catches a toggle on a field the user never touched (e.g. filled in by the browser),
+  // in the page and in every open shadow root, which a document observer doesn't see.
+  const watched = new WeakSet<Node>();
+  const scan = (node: Element | Document | ShadowRoot) => {
+    const els = node instanceof Element ? [node, ...node.querySelectorAll('*')] : [...node.querySelectorAll('*')];
+    for (const el of els) {
+      if (el.matches(PASSWORD)) passwords.add(el);
+      if (el.shadowRoot) watch(el.shadowRoot);
+    }
+  };
   const typeWatch = new MutationObserver((changes) => {
-    for (const c of changes) if (c.oldValue?.toLowerCase() === 'password') passwords.add(c.target as Element);
+    for (const c of changes) {
+      if (c.type === 'attributes' && c.oldValue?.toLowerCase() === 'password') passwords.add(c.target as Element);
+      for (const n of c.addedNodes) if (n.nodeType === 1) scan(n as Element);
+    }
   });
-  typeWatch.observe(doc, { subtree: true, attributeFilter: ['type'], attributeOldValue: true });
+  const watch = (root: Document | ShadowRoot) => {
+    if (watched.has(root)) return;
+    watched.add(root);
+    typeWatch.observe(root, { subtree: true, childList: true, attributeFilter: ['type'], attributeOldValue: true });
+    scan(root);
+  };
+  watch(doc);
 
   // `input` (unlike `change`) crosses shadow roots, and fires for every control kind.
   const onInput = (e: Event) => {

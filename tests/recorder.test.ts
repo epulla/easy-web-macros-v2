@@ -92,6 +92,28 @@ describe('record', () => {
     expect(JSON.stringify(ops)).not.toContain('hunter');
   });
 
+  it.each([
+    ['present at start', true],
+    ['added while recording', false],
+  ])('keeps hiding a password in a shadow root revealed before it was touched (%s)', async (_, before) => {
+    const host = document.createElement('div');
+    const add = () => {
+      document.body.append(host);
+      host.attachShadow({ mode: 'open' }).innerHTML = '<input type="password" aria-label="Password" value="hunter" />';
+    };
+    if (before) add();
+    start();
+    if (!before) add();
+    await Promise.resolve();
+    const pw = host.shadowRoot!.querySelector('input')!;
+    pw.type = 'text';
+    await Promise.resolve();
+    pw.value += '2';
+    input(pw);
+    expect(brief()).toEqual([{ action: 'type', label: 'Type password in "Password"', value: '', secret: true }]);
+    expect(JSON.stringify(ops)).not.toContain('hunter');
+  });
+
   it('records a choice inside a shadow root', () => {
     const host = document.createElement('div');
     document.body.append(host);
