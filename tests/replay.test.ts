@@ -26,7 +26,7 @@ const until = async (state: string) => {
 beforeEach(async () => {
   fakeBrowser.reset();
   played = [];
-  page = (tabId, msg) => (msg.type === 'where' ? 'https://a.io/' : (played.push([tabId, msg.step.id]), { ok: true }));
+  page = (tabId, msg) => (msg.type === 'play' ? (played.push([tabId, msg.step.id]), { ok: true }) : 'https://a.io/');
   fakeBrowser.tabs.sendMessage = vi.fn(async (tabId: number, msg: ToPage) => page(tabId, msg)) as never;
   fakeBrowser.tabs.update = vi.fn(async () => ({})) as never;
   await load();
@@ -36,7 +36,7 @@ describe('replay', () => {
   it('plays every step in order and waits for the page a click opens', async () => {
     await save([go('start', 'https://a.io/'), click('submit'), go('home', 'https://a.io/home'), click('menu')]);
     page = (tabId, msg) => {
-      if (msg.type === 'where') return 'https://a.io/';
+      if (msg.type !== 'play') return 'https://a.io/';
       played.push([tabId, msg.step.id]);
       if (msg.step.id === 'submit') setTimeout(() => r.pageLoaded(1), 50);
       return { ok: true };
@@ -79,7 +79,7 @@ describe('replay', () => {
     };
     await r.play('m', 1);
     const failed = await until('failed');
-    expect(failed).toMatchObject({ index: 1, message: 'missing', status: ['done', 'failed', 'pending'] });
+    expect(failed).toMatchObject({ index: 1, message: 'Step 2: missing', status: ['done', 'failed', 'pending'] });
 
     fail = false;
     await r.resume();
@@ -125,5 +125,43 @@ describe('replay', () => {
     await r.resumeRun();
     expect((await until('done')).status).toEqual(['done', 'done']);
     expect(played.map(([, id]) => id)).toEqual(['a', 'b']);
+  });
+
+  it('asks for a password, types it once, and never saves it', async () => {
+    const pw: Step = { id: 'pw', label: 'Type password in "Password"', locators: [], action: 'type', value: '', secret: true };
+    await save([pw, click('b')]);
+    const values: unknown[] = [];
+    page = (_, msg) => (msg.type === 'play' && values.push(msg.value), { ok: true });
+    await r.play('m', 1);
+    expect((await until('waiting')).message).toBe("Step 1: type the password for **Password**. It's used once and never saved.");
+
+    await r.proceed('hunter2');
+    await until('done');
+    expect(values).toEqual(['hunter2', undefined]);
+    expect(JSON.stringify(await fakeBrowser.storage.session.get())).not.toContain('hunter2');
+  });
+
+  it('waits for the user to choose a file, and skips a failing step', async () => {
+    const file: Step = { id: 'f', label: 'Upload a file to "Resume"', locators: [], action: 'upload' };
+    await save([file, click('bad'), click('c')]);
+    page = (_, msg) => (msg.type === 'play' && msg.step.id === 'bad' ? { error: 'missing' } : { ok: true });
+    await r.play('m', 1);
+    expect((await until('waiting')).message).toContain('choose the file for **Resume**');
+    await r.proceed();
+    await until('failed');
+    await r.skip();
+    expect((await until('done')).status).toEqual(['done', 'skipped', 'done']);
+  });
+
+  it('saves the element the user picks for a failing step and retries it', async () => {
+    await save([{ ...click('a'), locators: [{ kind: 'id', value: 'old' }], scope: [[{ kind: 'id', value: 'host' }]] }]);
+    const target = { locators: [{ kind: 'id', value: 'new' }] };
+    page = (_, msg) => (msg.type === 'pick' ? target : msg.type === 'play' && msg.step.locators[0]?.value === 'new' ? { ok: true } : { error: 'missing' });
+    await r.play('m', 1);
+    await until('failed');
+    await r.pickAgain();
+    await until('done');
+    const { macros } = await import('../src/bg/state');
+    expect((await macros.getValue())[0]!.steps[0]).toEqual({ ...click('a'), locators: target.locators });
   });
 });

@@ -1,10 +1,53 @@
-import { waitForElement } from './locator';
+import { COUNT_CHANGED, DISABLED, HIDDEN, NOT_FOUND, waitForElement } from './locator';
 import type { Step } from './macro';
 
 export type PlayResult = { ok: true } | { error: string };
 export type PageStep = Exclude<Step, { action: 'navigate' }>;
 
-const NO_OPTION = "This list doesn't have the recorded option anymore.";
+export const NO_OPTION = "This list doesn't have the recorded option anymore.";
+export const PAGE_NOT_READY = "This page isn't ready for playback.";
+export const NOT_LOADED = "The page didn't finish loading.";
+
+const NOUNS: Record<string, string> = {
+  button: 'button',
+  link: 'link',
+  checkbox: 'checkbox',
+  radio: 'option',
+  textbox: 'field',
+  searchbox: 'search field',
+  combobox: 'list',
+  heading: 'heading',
+  img: 'image',
+};
+
+// "the **Submit** button", from what the user saw when recording.
+export function describeTarget(step: Step): string {
+  const role = step.locators.find((l) => l.kind === 'role')?.value;
+  if (role) {
+    const [kind, ...name] = role.split(' ');
+    return `the **${name.join(' ')}**${NOUNS[kind!] ? ` ${NOUNS[kind!]}` : ''}`;
+  }
+  const label = step.locators.find((l) => l.kind === 'label' && /^(label|placeholder) /.test(l.value))?.value;
+  if (label) return `the **${label.slice(label.indexOf(' ') + 1)}** field`;
+  const text = step.locators.find((l) => l.kind === 'text')?.value;
+  if (text) return `**${text.slice(text.indexOf(' ') + 1)}**`;
+  const quoted = step.label.match(/"([^"]+)"/g)?.at(-1);
+  return quoted ? `**${quoted.slice(1, -1)}**` : 'the item';
+}
+
+export function stepError(n: number, step: Step, reason: string): string {
+  const what = describeTarget(step);
+  const said: Record<string, string> = {
+    [NOT_FOUND]: `couldn't find ${what} on this page.`,
+    [HIDDEN]: `${what} is on the page but hidden.`,
+    [DISABLED]: `${what} is turned off right now, so it can't be used.`,
+    [COUNT_CHANGED]: `the page has a different number of sections than when you recorded, so I can't tell which ${what.replace(/^the /, '')} to use.`,
+    [NO_OPTION]: `${what} doesn't have the option you picked anymore.`,
+    [PAGE_NOT_READY]: 'this page isn\'t ready for playback. Reload the page, then press Try again.',
+    [NOT_LOADED]: "the page didn't finish loading. Check your connection, then press Try again.",
+  };
+  return `Step ${n}: ${said[reason] ?? reason}`;
+}
 
 function mouse(el: Element, type: string, detail = 1) {
   const win = el.ownerDocument.defaultView!;

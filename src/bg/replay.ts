@@ -1,7 +1,8 @@
 import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
+import type { Target } from '../core/locator';
 import type { Step } from '../core/macro';
-import type { PageStep, PlayResult } from '../core/player';
+import { describeTarget, NOT_LOADED, PAGE_NOT_READY, stepError, type PageStep, type PlayResult } from '../core/player';
 import { macros } from './state';
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped';
@@ -14,7 +15,9 @@ export interface Run {
   status: StepStatus[];
   index: number;
   tabId: number;
-  state: 'running' | 'paused' | 'failed' | 'done';
+  // waiting: the user has to type a password or choose a file; picking: the user is
+  // clicking the right element for a failed step.
+  state: 'running' | 'paused' | 'failed' | 'waiting' | 'picking' | 'done';
   message: string;
   delayMs: number;
   speed: number;
@@ -26,12 +29,14 @@ export interface Run {
 // Session storage keeps the run going across page loads and background restarts.
 export const run = storage.defineItem<Run | null>('session:run', { fallback: null });
 
-export type ToPage = { type: 'play'; step: PageStep; value?: string } | { type: 'where' };
+export type ToPage =
+  | { type: 'play'; step: PageStep; value?: string }
+  | { type: 'where' }
+  | { type: 'pick' }
+  | { type: 'pick-end' };
 
 const FOLLOW_MS = 10_000;
 const LOAD_MS = 30_000;
-const PAGE_NOT_READY = "This page isn't ready for playback.";
-const NOT_LOADED = "The page didn't finish loading.";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -86,7 +91,10 @@ async function sendToPage(tabId: number, msg: ToPage, ms = 15_000): Promise<unkn
 // the page that action opened instead of loading the URL again.
 let acted: { runId: string; index: number; at: number } | undefined;
 
-type Outcome = PlayResult & { tabId?: number };
+type Outcome = ({ ok: true; tabId?: number } | { error: string } | { ask: string });
+
+// A password typed for the current step; kept in memory only, never saved.
+let given: { runId: string; index: number; value: string } | undefined;
 
 async function navigate(r: Run, step: Extract<Step, { action: 'navigate' }>): Promise<Outcome> {
   const after = acted?.runId === r.id && acted.index === r.index - 1 ? acted.at : undefined;
@@ -113,8 +121,21 @@ async function perform(r: Run): Promise<Outcome> {
   const step = r.steps[r.index]!;
   try {
     if (step.action === 'navigate') return await navigate(r, step);
+    const n = r.index + 1;
+    let value: string | undefined;
+    if (step.action === 'type' && step.secret) {
+      if (given?.runId !== r.id || given.index !== r.index) {
+        return { ask: `Step ${n}: type the password for ${describeTarget(step)}. It's used once and never saved.` };
+      }
+      value = given.value;
+      given = undefined;
+    }
     acted = { runId: r.id, index: r.index, at: Date.now() };
-    return (await sendToPage(r.tabId, { type: 'play', step })) as PlayResult;
+    const res = (await sendToPage(r.tabId, { type: 'play', step, value })) as PlayResult;
+    if (step.action === 'upload' && 'ok' in res) {
+      return { ask: `Step ${n}: choose the file for ${describeTarget(step)} on the page, then press Continue.` };
+    }
+    return res;
   } catch {
     return { error: PAGE_NOT_READY };
   }
@@ -139,11 +160,13 @@ async function loop(): Promise<void> {
       const res = await perform(r);
       const next = await patch(r.id, (c) =>
         'error' in res
-          ? { status: c.status.with(i, 'failed'), state: 'failed', message: res.error }
-          : { status: c.status.with(i, 'done'), index: i + 1, ...(res.tabId !== undefined && { tabId: res.tabId }) },
+          ? { status: c.status.with(i, 'failed'), state: 'failed', message: stepError(i + 1, c.steps[i]!, res.error) }
+          : 'ask' in res
+            ? { state: 'waiting', message: res.ask }
+            : { status: c.status.with(i, 'done'), index: i + 1, ...(res.tabId !== undefined && { tabId: res.tabId }) },
       );
       const more = next && (next.index < next.steps.length || next.loop || next.round < next.runs);
-      if (next?.state === 'running' && more) await sleep(next.delayMs / next.speed);
+      if (next?.state === 'running' && 'ok' in res && more) await sleep(next.delayMs / next.speed);
     }
   } finally {
     looping = false;
@@ -185,11 +208,76 @@ export const pause = () =>
     if (r?.state === 'running') await run.setValue({ ...r, state: 'paused' });
   });
 
+const endPick = (r: Run | null) => {
+  if (r?.state === 'picking') void browser.tabs.sendMessage(r.tabId, { type: 'pick-end' } satisfies ToPage).catch(() => {});
+};
+
+// Retries the current step.
 export async function resume() {
   await update(async (r) => {
-    if (r?.state === 'paused' || r?.state === 'failed') await run.setValue({ ...r, state: 'running', message: '' });
+    if (!r || !['paused', 'failed', 'picking'].includes(r.state)) return;
+    endPick(r);
+    await run.setValue({ ...r, state: 'running', message: '' });
   });
   void loop();
 }
 
-export const stopRun = () => update(() => run.setValue(null));
+export async function skip() {
+  await update(async (r) => {
+    if (!r || r.state === 'running' || r.state === 'done') return;
+    endPick(r);
+    await run.setValue({ ...r, status: r.status.with(r.index, 'skipped'), index: r.index + 1, state: 'running', message: '' });
+  });
+  void loop();
+}
+
+// Answers a waiting step: the password to type, or nothing once the user chose a file.
+export async function proceed(value = '') {
+  await update(async (r) => {
+    if (r?.state !== 'waiting') return;
+    const step = r.steps[r.index]!;
+    if (step.action === 'upload') {
+      await run.setValue({ ...r, status: r.status.with(r.index, 'done'), index: r.index + 1, state: 'running', message: '' });
+    } else {
+      given = { runId: r.id, index: r.index, value };
+      await run.setValue({ ...r, state: 'running', message: '' });
+    }
+  });
+  void loop();
+}
+
+// Lets the user click the element a failed step should use, saves it to the macro, and retries.
+export async function pickAgain() {
+  const r = await update(async (r) => {
+    if (r?.state !== 'failed' || r.steps[r.index]!.action === 'navigate') return null;
+    const next = { ...r, state: 'picking' as const, message: 'Click the right item on the page.' };
+    await run.setValue(next);
+    return next;
+  });
+  if (!r) return;
+  let target: Target;
+  try {
+    // Every frame listens; the one the user clicks in answers.
+    target = (await browser.tabs.sendMessage(r.tabId, { type: 'pick' } satisfies ToPage)) as Target;
+  } catch {
+    await patch(r.id, (c) => (c.state === 'picking' ? { state: 'failed', message: stepError(c.index + 1, c.steps[c.index]!, PAGE_NOT_READY) } : {}));
+    return;
+  }
+  void browser.tabs.sendMessage(r.tabId, { type: 'pick-end' } satisfies ToPage).catch(() => {});
+  const stepId = r.steps[r.index]!.id;
+  const fix = (s: Step): Step => {
+    if (s.id !== stepId) return s;
+    const { scope: _, ...rest } = s;
+    return { ...rest, ...target } as Step;
+  };
+  const updated = await patch(r.id, (c) => (c.state === 'picking' ? { steps: c.steps.map(fix), state: 'running', message: '' } : {}));
+  if (updated?.state !== 'running') return;
+  await macros.setValue((await macros.getValue()).map((m) => (m.id === r.macroId ? { ...m, steps: m.steps.map(fix) } : m)));
+  void loop();
+}
+
+export const stopRun = () =>
+  update(async (r) => {
+    endPick(r);
+    await run.setValue(null);
+  });

@@ -218,10 +218,10 @@ function candidates(el: Element): Locator[] {
   return out;
 }
 
-const NOT_FOUND = "Couldn't find this element on the page.";
+export const NOT_FOUND = "Couldn't find this element on the page.";
 const isPositional = (l: Locator) => l.kind === 'css' || l.kind === 'xpath';
 const countSameTag = (el: Element, space: Root[]) => space.flatMap((root) => query(root, tag(el))).length;
-const COUNT_CHANGED = "The page now has a different number of these sections, so I can't tell which one to use.";
+export const COUNT_CHANGED = "The page now has a different number of these sections, so I can't tell which one to use.";
 
 // Position-based locators hit a neighbour once the target is gone, so they only
 // apply when nothing else was recorded (e.g. migrated v1 steps).
@@ -253,6 +253,9 @@ function locate({ locators, scope = [] }: Target, doc: Document): Element | stri
   return resolve(locators, space) ?? NOT_FOUND;
 }
 
+export const HIDDEN = 'This element is hidden.';
+export const DISABLED = 'This element is turned off (disabled).';
+
 const isVisible = (el: Element) => el.checkVisibility({ visibilityProperty: true });
 function isEnabled(el: Element): boolean {
   if (el.matches(':disabled')) return false;
@@ -272,7 +275,7 @@ export async function waitForElement(
     if (typeof el !== 'string' && isVisible(el) && isEnabled(el)) return el;
     if (Date.now() >= deadline) {
       if (typeof el === 'string') throw new Error(el);
-      throw new Error(isVisible(el) ? 'This element is turned off (disabled).' : 'This element is hidden.');
+      throw new Error(isVisible(el) ? DISABLED : HIDDEN);
     }
     await new Promise((r) => setTimeout(r, 100));
   }

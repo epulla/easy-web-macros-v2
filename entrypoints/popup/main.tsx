@@ -45,9 +45,15 @@ function Popup() {
       {run && !rec ? (
         <RunView
           run={run}
-          onPause={() => void send({ type: 'pause' })}
-          onResume={() => void send({ type: 'resume' })}
-          onStop={() => void send({ type: 'stop-run' })}
+          act={{
+            pause: () => void send({ type: 'pause' }),
+            resume: () => void send({ type: 'resume' }),
+            stop: () => void send({ type: 'stop-run' }),
+            skip: () => void send({ type: 'skip' }),
+            proceed: (value) => void send({ type: 'proceed', value }),
+            // Closing the popup lets the click reach the page.
+            pick: () => void send({ type: 'pick' }).then(() => window.close()),
+          }}
         />
       ) : rec ? (
         <>

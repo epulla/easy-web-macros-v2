@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Run, StepStatus } from '../bg/replay';
 
 const STATUS: Record<StepStatus, { icon: string; text: string; className: string }> = {
@@ -13,10 +13,27 @@ const HEADLINE: Record<Run['state'], string> = {
   running: 'Playing',
   paused: 'Paused',
   failed: 'Stopped at a problem',
+  waiting: 'Needs you',
+  picking: 'Waiting for your click',
   done: 'Finished',
 };
 
-export function RunView({ run, onPause, onResume, onStop }: { run: Run; onPause: () => void; onResume: () => void; onStop: () => void }) {
+// Messages mark names with **bold**.
+const rich = (text: string) => text.split('**').map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part));
+
+export interface RunActions {
+  pause: () => void;
+  resume: () => void;
+  stop: () => void;
+  skip: () => void;
+  proceed: (value?: string) => void;
+  pick: () => void;
+}
+
+export function RunView({ run, act }: { run: Run; act: RunActions }) {
+  const [password, setPassword] = useState('');
+  const step = run.steps[run.index];
+  const asksPassword = run.state === 'waiting' && step?.action === 'type';
   const rounds = run.loop ? ` · run ${run.round}` : run.runs > 1 ? ` · run ${run.round} of ${run.runs}` : '';
   return (
     <section className="flex flex-col gap-3" aria-label={`Playing ${run.name}`}>
@@ -41,22 +58,63 @@ export function RunView({ run, onPause, onResume, onStop }: { run: Run; onPause:
         })}
       </ol>
       {run.message && (
-        <p role="alert" className="text-sm text-rose-700">
-          {run.message}
+        <p role="alert" className={`text-sm ${run.state === 'failed' ? 'text-rose-700' : 'text-amber-800'}`}>
+          {rich(run.message)}
         </p>
       )}
-      <div className="flex gap-2">
+      {asksPassword && (
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            act.proceed(password);
+            setPassword('');
+          }}
+        >
+          <input
+            type="password"
+            aria-label="Password"
+            autoComplete="off"
+            autoFocus
+            className="min-w-0 flex-1 rounded border border-neutral-300 px-2 py-1 text-sm"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button className="btn">Type it</button>
+        </form>
+      )}
+      <div className="flex flex-wrap gap-2">
         {run.state === 'running' && (
-          <button className="btn" onClick={onPause}>
+          <button className="btn" onClick={act.pause}>
             Pause
           </button>
         )}
         {run.state === 'paused' && (
-          <button className="btn" onClick={onResume}>
+          <button className="btn" onClick={act.resume}>
             Continue
           </button>
         )}
-        <button className="btn" onClick={onStop}>
+        {run.state === 'waiting' && step?.action === 'upload' && (
+          <button className="btn" onClick={() => act.proceed()}>
+            Continue
+          </button>
+        )}
+        {(run.state === 'failed' || run.state === 'picking') && (
+          <button className="btn" onClick={act.resume}>
+            Try again
+          </button>
+        )}
+        {run.state === 'failed' && step?.action !== 'navigate' && (
+          <button className="btn" onClick={act.pick} title="Click the right item on the page; the macro remembers it">
+            Pick it on the page
+          </button>
+        )}
+        {['failed', 'waiting', 'paused', 'picking'].includes(run.state) && (
+          <button className="btn" onClick={act.skip}>
+            Skip this step
+          </button>
+        )}
+        <button className="btn" onClick={act.stop}>
           {run.state === 'done' ? 'Close' : 'Stop'}
         </button>
       </div>

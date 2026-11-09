@@ -1,5 +1,5 @@
 import { addOp, firstPage, hello, recording, startRecording, stopRecording } from '../src/bg/recording';
-import { pageLoaded, pause, play, resume, resumeRun, run, stopRun } from '../src/bg/replay';
+import { pageLoaded, pause, pickAgain, play, proceed, resume, resumeRun, run, skip, stopRun } from '../src/bg/replay';
 import type { RecordOp } from '../src/core/recorder';
 
 export type ToBackground =
@@ -11,7 +11,10 @@ export type ToBackground =
   | { type: 'play'; macroId: string; tabId: number; from?: number; speed?: number }
   | { type: 'pause' }
   | { type: 'resume' }
-  | { type: 'stop-run' };
+  | { type: 'stop-run' }
+  | { type: 'skip' }
+  | { type: 'proceed'; value?: string }
+  | { type: 'pick' };
 
 const showBadge = async () => {
   const [rec, r] = await Promise.all([recording.getValue(), run.getValue()]);
@@ -19,7 +22,7 @@ const showBadge = async () => {
     ? ['REC', '#e11d48']
     : r?.state === 'running'
       ? ['▶', '#2563eb']
-      : r?.state === 'failed'
+      : r?.state === 'failed' || r?.state === 'waiting' || r?.state === 'picking'
         ? ['!', '#d97706']
         : ['', '#e11d48'];
   void browser.action.setBadgeText({ text });
@@ -39,6 +42,9 @@ export default defineBackground(() => {
     if (msg.type === 'pause') return pause();
     if (msg.type === 'resume') return resume();
     if (msg.type === 'stop-run') return stopRun();
+    if (msg.type === 'skip') return skip();
+    if (msg.type === 'proceed') return proceed(msg.value);
+    if (msg.type === 'pick') return void pickAgain();
     const tabId = sender.tab?.id;
     if (tabId === undefined) return;
     if (msg.type === 'hello' && msg.top) pageLoaded(tabId, sender.tab?.openerTabId);
