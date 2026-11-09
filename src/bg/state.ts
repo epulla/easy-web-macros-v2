@@ -6,3 +6,6 @@ export const macros = storage.defineItem<Macro[]>('local:macros', {
   version: 2,
   init: async () => migrate((await storage.getItem<Record<string, V1Collection>>('local:collections')) ?? {}),
 });
+
+// Playback speed multiplier chosen in the popup.
+export const speed = storage.defineItem<number>('local:speed', { fallback: 1 });

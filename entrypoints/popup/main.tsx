@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { recording, type Recording } from '../../src/bg/recording';
 import { run as runItem, type Run } from '../../src/bg/replay';
-import { macros as macrosItem } from '../../src/bg/state';
+import { macros as macrosItem, speed as speedItem } from '../../src/bg/state';
 import type { Macro } from '../../src/core/macro';
 import { RunView } from '../../src/ui/RunView';
 import type { ToBackground } from '../background';
@@ -16,11 +16,13 @@ function Popup() {
   const [error, setError] = useState('');
   const [run, setRun] = useState<Run | null>(null);
   const [macros, setMacros] = useState<Macro[]>([]);
+  const [speed, setSpeed] = useState(1);
 
   useEffect(() => {
     void recording.getValue().then(setRec);
     void runItem.getValue().then(setRun);
     void macrosItem.getValue().then(setMacros);
+    void speedItem.getValue().then(setSpeed);
     const unwatch = [recording.watch(setRec), runItem.watch(setRun), macrosItem.watch(setMacros)];
     return () => unwatch.forEach((u) => u());
   }, []);
@@ -33,10 +35,10 @@ function Popup() {
     else setError("This page can't be recorded. Open a website, or reload this page and try again.");
   };
 
-  const play = async (macroId: string) => {
+  const play = async (macroId: string, from = 0) => {
     const tabId = await activeTab();
     setError('');
-    if (tabId === undefined || !(await send({ type: 'play', macroId, tabId }))) setError("Couldn't start this macro. Try again.");
+    if (tabId === undefined || !(await send({ type: 'play', macroId, tabId, from, speed }))) setError("Couldn't start this macro. Try again.");
   };
 
   return (
@@ -80,16 +82,52 @@ function Popup() {
             Also record when I rest the pointer on something
           </label>
           {macros.length > 0 && (
-            <ul aria-label="Your macros" className="flex flex-col gap-1 border-t border-neutral-200 pt-3">
-              {macros.map((m) => (
-                <li key={m.id} className="flex items-center justify-between gap-2 text-sm">
-                  <span className="truncate">{m.name}</span>
-                  <button className="btn shrink-0" aria-label={`Play ${m.name}`} onClick={() => void play(m.id)}>
-                    ▶ Play
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <section className="flex flex-col gap-2 border-t border-neutral-200 pt-3">
+              <label className="flex items-center gap-2 text-sm">
+                Speed
+                <select
+                  className="rounded border border-neutral-300 px-1 py-0.5"
+                  value={speed}
+                  onChange={(e) => {
+                    setSpeed(Number(e.target.value));
+                    void speedItem.setValue(Number(e.target.value));
+                  }}
+                >
+                  <option value={0.5}>Slow (half speed)</option>
+                  <option value={1}>Normal</option>
+                  <option value={2}>Fast (2×)</option>
+                  <option value={4}>Fastest (4×)</option>
+                </select>
+              </label>
+              <ul aria-label="Your macros" className="flex flex-col gap-1">
+                {macros.map((m) => (
+                  <li key={m.id} className="flex items-start justify-between gap-2 text-sm">
+                    <details className="min-w-0 flex-1">
+                      <summary className="cursor-pointer truncate">{m.name}</summary>
+                      <ol className="mt-1 flex max-h-48 flex-col gap-1 overflow-y-auto">
+                        {m.steps.map((step, i) => (
+                          <li key={step.id} className="flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              {i + 1}. {step.label}
+                            </span>
+                            <button
+                              className="btn shrink-0"
+                              aria-label={`Play ${m.name} from step ${i + 1}`}
+                              onClick={() => void play(m.id, i)}
+                            >
+                              From here
+                            </button>
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
+                    <button className="btn shrink-0" aria-label={`Play ${m.name}`} onClick={() => void play(m.id)}>
+                      ▶ Play
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
           {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         </>
