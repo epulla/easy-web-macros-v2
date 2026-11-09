@@ -179,3 +179,13 @@ export function importMacro(text: string): Macro {
   }
   throw new Error("This file isn't a macro file.");
 }
+
+export function moveStep(steps: Step[], from: number, to: number): Step[] {
+  if (from === to || to < 0 || to >= steps.length) return steps;
+  const next = steps.toSpliced(from, 1);
+  return next.toSpliced(to, 0, steps[from]!);
+}
+
+// The copy goes right after the original, with its own id.
+export const duplicateStep = (steps: Step[], i: number): Step[] =>
+  steps.toSpliced(i + 1, 0, { ...structuredClone(steps[i]!), id: crypto.randomUUID() });
