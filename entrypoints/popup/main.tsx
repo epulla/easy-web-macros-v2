@@ -316,7 +316,9 @@ function Popup() {
                 <p className="text-xs text-muted">A quick rating on the Chrome Web Store helps other people find it.</p>
                 <div className="flex flex-wrap gap-2">
                   <button className="btn btn-primary" onClick={() => void rate()}>
-                    <Star />
+                    <span className="text-spark">
+                      <Star />
+                    </span>
                     Rate it
                   </button>
                   <button className="btn" onClick={() => setPrompt('closed')}>
