@@ -1,6 +1,10 @@
+<p align="center">
+  <img src="docs/brand/github/readme-banner-1600x500.png" alt="Easy Web Macros — Record once. Replay anytime." width="100%" />
+</p>
+
 # Easy Web Macros
 
-Record your web actions and replay them with a single click.
+Record what you do on a website once, then replay it with one click. Edit the steps and watch each one as it plays..
 
 ## Features
 
@@ -24,7 +28,6 @@ pnpm dev
 pnpm compile
 pnpm test
 pnpm build
-pnpm build:firefox
 ```
 
 ## Privacy

@@ -1,17 +1,14 @@
 {
   "name": "easy-web-macros",
-  "description": "Record your web actions and replay them with a single click",
+  "description": "Record what you do on a website once, then replay it with one click. Edit the steps and watch each one as it plays.",
   "private": true,
-  "version": "2.0.0",
+  "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@11.18.0",
   "scripts": {
     "dev": "wxt",
-    "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
-    "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
-    "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "test": "vitest run",
     "postinstall": "wxt prepare"
@@ -26,6 +23,7 @@
     "@types/react-dom": "^19.2.3",
     "@webext-core/fake-browser": "^2.0.1",
     "@wxt-dev/module-react": "^1.1.5",
+    "jsdom": "^31.0.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^5.0.2",

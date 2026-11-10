@@ -1,0 +1,71 @@
+{
+  "collections": {
+    "3f1c2a9e-7b4d-4e8a-9c21-5d6f7a8b9c01": {
+      "id": "3f1c2a9e-7b4d-4e8a-9c21-5d6f7a8b9c01",
+      "name": "Login",
+      "steps": [
+        {
+          "id": "a1b2c3d4-0001-4000-8000-000000000001",
+          "xpath": "//*[@id=\"email\"]",
+          "strategy": "InputSendKeys",
+          "value": "me@example.com",
+          "visibility": "visible",
+          "status": "success",
+          "label": "email"
+        },
+        {
+          "id": "a1b2c3d4-0001-4000-8000-000000000002",
+          "xpath": "//*[@id=\"password\"]",
+          "strategy": "InputSendKeys",
+          "value": "hunter2",
+          "visibility": "hidden",
+          "status": "idle",
+          "label": "password"
+        },
+        {
+          "id": "a1b2c3d4-0001-4000-8000-000000000003",
+          "xpath": "/html/body/main/form/button",
+          "strategy": "ButtonClick",
+          "visibility": "visible",
+          "status": "error",
+          "label": "Sign in",
+          "error": "Element not found"
+        }
+      ],
+      "delayBetweenSteps": 1500,
+      "numberOfRuns": 2,
+      "doesLoopInfinitely": false
+    },
+    "8e7d6c5b-4a39-4281-8f0e-1d2c3b4a5f60": {
+      "id": "8e7d6c5b-4a39-4281-8f0e-1d2c3b4a5f60",
+      "name": "New Collection 2",
+      "steps": [
+        {
+          "id": "a1b2c3d4-0002-4000-8000-000000000001",
+          "xpath": "/html/body/nav/a[2]",
+          "strategy": "AClick",
+          "visibility": "visible",
+          "status": "idle",
+          "label": "Docs"
+        }
+      ],
+      "delayBetweenSteps": 1000,
+      "numberOfRuns": 1,
+      "doesLoopInfinitely": true
+    },
+    "0b9a8f7e-6d5c-4b4a-8392-817161514131": {
+      "id": "0b9a8f7e-6d5c-4b4a-8392-817161514131",
+      "name": "Empty",
+      "steps": [],
+      "delayBetweenSteps": 1000,
+      "numberOfRuns": 1,
+      "doesLoopInfinitely": false
+    }
+  },
+  "activeCollectionId": "3f1c2a9e-7b4d-4e8a-9c21-5d6f7a8b9c01",
+  "isRecording": false,
+  "playStatus": "idle",
+  "stepIndex": 0,
+  "skipIdSearch": true,
+  "count": 0
+}

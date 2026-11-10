@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="560" viewBox="0 0 560 560">
+<defs>
+ <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4D22CD"/><stop offset=".52" stop-color="#361793"/><stop offset="1" stop-color="#18114D"/></linearGradient>
+ <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9D79FF"/><stop offset=".55" stop-color="#6E38E9"/><stop offset="1" stop-color="#4720BC"/></linearGradient>
+ <linearGradient id="lilac" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#FFFFFF"/><stop offset=".65" stop-color="#FAF8FF"/><stop offset="1" stop-color="#D7C2FF"/></linearGradient>
+ <linearGradient id="soft" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F9F6FF"/><stop offset="1" stop-color="#E6DCFF"/></linearGradient>
+ <linearGradient id="banner" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2B166F"/><stop offset=".55" stop-color="#4225AA"/><stop offset="1" stop-color="#6D41E5"/></linearGradient>
+ <linearGradient id="bannerAlt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4F28C9"/><stop offset="1" stop-color="#291461"/></linearGradient>
+ <linearGradient id="hot" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FF7076"/><stop offset="1" stop-color="#FC3F55"/></linearGradient>
+ <linearGradient id="headScreen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#272073"/><stop offset="1" stop-color="#0F103B"/></linearGradient>
+ <filter id="smallShadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="9" stdDeviation="11" flood-color="#150C47" flood-opacity=".18"/></filter>
+ <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#150C47" flood-opacity=".24"/></filter>
+</defs><g filter="url(#smallShadow)">
+<!-- Single antenna and cheerful sparkle -->
+<path d="M283 130 L295 74" fill="none" stroke="#201563" stroke-width="11" stroke-linecap="round"/>
+<circle cx="297" cy="62" r="26" fill="url(#purple)" stroke="#1F175F" stroke-width="10"/>
+<ellipse cx="290" cy="53" rx="11" ry="8" fill="#E7DAFF" opacity=".9"/>
+<g stroke="#FFC51A" stroke-width="13" stroke-linecap="round"><path d="M421 71 L430 40"/><path d="M449 96 L476 77"/><path d="M452 127 L487 124"/></g>
+<!-- Body partly behind gamepad -->
+<path d="M205 344 C189 390 188 470 230 497 C266 518 360 520 394 491 C410 476 409 402 390 357Z" fill="url(#lilac)" stroke="#201563" stroke-width="11"/>
+<path d="M247 485 L244 520 M354 483 L358 520" stroke="#201563" stroke-width="16" stroke-linecap="round"/>
+<!-- Earpieces -->
+<ellipse cx="135" cy="265" rx="40" ry="65" fill="url(#purple)" stroke="#211569" stroke-width="10"/>
+<ellipse cx="434" cy="265" rx="38" ry="62" fill="url(#purple)" stroke="#211569" stroke-width="10"/>
+<ellipse cx="126" cy="257" rx="15" ry="38" fill="#BBA1FF" opacity=".67"/>
+<ellipse cx="425" cy="257" rx="14" ry="35" fill="#BBA1FF" opacity=".56"/>
+<!-- Head -->
+<rect x="140" y="119" width="290" height="281" rx="120" fill="url(#lilac)" stroke="#201563" stroke-width="12"/>
+<path d="M186 172 C228 130 353 129 390 173" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" opacity=".85"/>
+<!-- Face display -->
+<rect x="176" y="181" width="220" height="155" rx="61" fill="url(#headScreen)"/>
+<path d="M224 253 Q235 226 257 253 M314 253 Q329 224 347 253" fill="none" stroke="white" stroke-width="13" stroke-linecap="round"/>
+<ellipse cx="217" cy="287" rx="15" ry="7" fill="#917BEE" opacity=".28"/><ellipse cx="351" cy="287" rx="15" ry="7" fill="#917BEE" opacity=".28"/>
+<!-- Hands are visible around the controller -->
+<ellipse cx="167" cy="406" rx="52" ry="48" fill="url(#lilac)" stroke="#211569" stroke-width="10"/>
+<ellipse cx="412" cy="405" rx="48" ry="45" fill="url(#lilac)" stroke="#211569" stroke-width="10"/>
+<!-- Controller -->
+<rect x="164" y="356" width="246" height="96" rx="31" fill="#F9F6FF" stroke="#201563" stroke-width="11"/>
+<circle cx="220" cy="404" r="21" fill="url(#hot)"/>
+<path d="M292 382 L292 426 L332 404 Z" fill="#24176C"/>
+<path d="M356 392 A18 18 0 0 1 386 391 M387 414 A18 18 0 0 1 358 416" fill="none" stroke="#24176C" stroke-width="7" stroke-linecap="round"/>
+<path d="M384 383 L387 395 L376 392 M359 426 L356 414 L368 417" fill="#24176C"/>
+<path d="M166 379 Q150 371 146 388 M410 377 Q427 369 431 387" fill="none" stroke="#211569" stroke-width="10" stroke-linecap="round"/>
+</g></svg>

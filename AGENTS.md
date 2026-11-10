@@ -1,9 +1,9 @@
 # Project instructions
 
 ## Commands
-- `pnpm dev` / `pnpm dev:firefox`: run extension in browser.
-- `pnpm compile`, `pnpm test`, `pnpm build`, `pnpm build:firefox`: validate.
-- `pnpm zip` / `pnpm zip:firefox`: package store builds.
+- `pnpm dev`: run extension in Chrome.
+- `pnpm compile`, `pnpm test`, `pnpm build`: validate.
+- `pnpm zip`: package Chrome Web Store build.
 
 ## Layout
 - `entrypoints/`: WXT background, content, popup, options, onboarding shells.
@@ -14,8 +14,8 @@
 ## Domain rules
 - Easy Web Macros records and replays web actions. Keep macro behavior scoped to user-initiated recording/replay.
 - Persist extension data in `chrome.storage.local`; do not send it elsewhere.
-- Manifest permissions must remain `storage`; content script matches only HTTP(S). Stop before adding permissions.
-- Keep Chrome and Firefox builds working.
+- Manifest permissions: `storage` by default; add `tabs` or `scripting` only when a feature truly needs it, and list every new permission in the PR (existing users get a re-approve prompt). Content script matches only HTTP(S).
+- Target Chrome only for now.
 
 ## UI copy
 - Write for non-technical users. Use short, clear labels and explain consequences.
