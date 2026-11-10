@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { recording, type Recording } from '../../src/bg/recording';
 import { run as runItem, type Run } from '../../src/bg/replay';
@@ -27,12 +27,12 @@ function ago(at: number) {
 function LastPlay({ last }: { last?: LastRun }) {
   if (!last) return <span>Not played yet</span>;
   return last.ok ? (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
       <Check />
       Worked {ago(last.at)}
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-rec-ink">
+    <span className="inline-flex min-w-0 items-start gap-1 text-rec-ink [&_svg]:mt-0.5">
       <Close />
       Stopped at step {last.step} · {ago(last.at)}
     </span>
@@ -59,6 +59,12 @@ function Popup() {
   const [prompt, setPrompt] = useState<Prompt>('waiting');
   const [settings, setSettings] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
+  // Swapping the header removes the focused button, so focus moves to its counterpart.
+  const shown = useRef(false);
+  useEffect(() => {
+    if (shown.current) document.getElementById(settings ? 'settings-back' : 'settings-open')?.focus();
+    shown.current = true;
+  }, [settings]);
 
   useEffect(() => {
     void Promise.all([recording.getValue(), runItem.getValue()]).then(([rec, current]) => {
@@ -122,7 +128,7 @@ function Popup() {
       <header className="flex items-center gap-2 border-b px-4 py-3">
         {showSettings ? (
           <>
-            <button className="btn btn-ghost btn-icon -ml-2" aria-label="Back to your macros" onClick={() => setSettings(false)}>
+            <button id="settings-back" className="btn btn-ghost btn-icon -ml-2" aria-label="Back to your macros" onClick={() => setSettings(false)}>
               <Back />
             </button>
             <h1 className="flex-1 font-bold">Settings</h1>
@@ -132,7 +138,7 @@ function Popup() {
             <Logo />
             <h1 className="flex-1 font-bold">Easy Web Macros</h1>
             {!rec && !run && (
-              <button className="btn btn-ghost btn-icon -mr-2" aria-label="Settings" onClick={() => setSettings(true)}>
+              <button id="settings-open" className="btn btn-ghost btn-icon -mr-2" aria-label="Settings" onClick={() => setSettings(true)}>
                 <Gear />
               </button>
             )}
@@ -271,8 +277,8 @@ function Popup() {
                           <p className="line-clamp-2 font-medium [overflow-wrap:anywhere]" title={m.name}>
                             {m.name}
                           </p>
-                          <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs whitespace-nowrap text-muted">
-                            <span>{plural(m.steps.length, 'step')}</span>
+                          <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted">
+                            <span className="whitespace-nowrap">{plural(m.steps.length, 'step')}</span>
                             <LastPlay last={lastRuns[m.id]} />
                           </p>
                         </div>
