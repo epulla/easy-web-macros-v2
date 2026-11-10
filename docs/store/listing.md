@@ -97,6 +97,16 @@ Easy Web Macros 2 is a full rewrite.
 
 Regenerate: `pnpm build`, then load `.output/chrome-mv3` as an unpacked extension in Chromium, seed sample macros and capture each page at 1280×800 (popup shots are framed on a 1280×800 background).
 
+## Store graphics
+
+Upload from [../brand/chrome-web-store/](../brand/chrome-web-store/):
+
+- Store icon (128×128): `store-icon-128.png`
+- Small promo tile (440×280): `promo-small-440x280.png`
+- Marquee promo tile (1400×560): `promo-marquee-1400x560.png` (`promo-marquee-art-only-1400x560.png` is the no-text alternative)
+
+GitHub: set `docs/brand/github/social-preview-1280x640.png` as the repo social preview (Settings → General).
+
 ## Links
 
 - Homepage URL: https://github.com/epulla/easy-web-macros-v2

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="deep" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4D22CD"/><stop offset=".52" stop-color="#361793"/><stop offset="1" stop-color="#18114D"/></linearGradient>
+ <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9D79FF"/><stop offset=".55" stop-color="#6E38E9"/><stop offset="1" stop-color="#4720BC"/></linearGradient>
+ <linearGradient id="lilac" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#FFFFFF"/><stop offset=".65" stop-color="#FAF8FF"/><stop offset="1" stop-color="#D7C2FF"/></linearGradient>
+ <linearGradient id="soft" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F9F6FF"/><stop offset="1" stop-color="#E6DCFF"/></linearGradient>
+ <linearGradient id="banner" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2B166F"/><stop offset=".55" stop-color="#4225AA"/><stop offset="1" stop-color="#6D41E5"/></linearGradient>
+ <linearGradient id="bannerAlt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4F28C9"/><stop offset="1" stop-color="#291461"/></linearGradient>
+ <linearGradient id="hot" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FF7076"/><stop offset="1" stop-color="#FC3F55"/></linearGradient>
+ <linearGradient id="headScreen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#272073"/><stop offset="1" stop-color="#0F103B"/></linearGradient>
+ <filter id="smallShadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="9" stdDeviation="11" flood-color="#150C47" flood-opacity=".18"/></filter>
+ <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#150C47" flood-opacity=".24"/></filter>
+</defs>
+<rect x="0" y="0" width="512" height="512" rx="124" fill="url(#deep)"/>
+<path d="M255 137 L255 98" stroke="white" stroke-width="20" stroke-linecap="round"/>
+<circle cx="255" cy="87" r="22" fill="white"/>
+<rect x="82" y="220" width="47" height="91" rx="22" fill="white"/>
+<rect x="384" y="220" width="47" height="91" rx="22" fill="white"/>
+<rect x="110" y="151" width="294" height="214" rx="93" fill="white"/>
+<rect x="145" y="201" width="223" height="119" rx="56" fill="#19134F"/>
+<path d="M189 265 Q207 239 224 264 M284 264 Q304 238 322 264" stroke="#FFFFFF" stroke-width="19" fill="none" stroke-linecap="round"/>
+<g stroke="#FFD13C" stroke-width="17" stroke-linecap="round"><path d="M363 91L371 60"/><path d="M391 112 L414 91"/><path d="M395 139L426 136"/></g>
+</svg>

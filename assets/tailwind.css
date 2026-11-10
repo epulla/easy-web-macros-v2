@@ -1,50 +1,51 @@
 @import "tailwindcss";
 
-/* Headings only; bundled so nothing loads from the network. License: fonts/Nunito-OFL.txt */
+/* Headings only, matching the wordmark; bundled so nothing loads from the network. License: fonts/Inter-OFL.txt */
 @font-face {
-  font-family: "Nunito";
-  src: url("./fonts/nunito-latin.woff2") format("woff2");
-  font-weight: 200 1000;
+  font-family: "Inter";
+  src: url("./fonts/inter-latin.woff2") format("woff2");
+  font-weight: 100 900;
   font-display: swap;
 }
 
-/* Clean minimal in the brand palette: navy text, lavender surfaces, one violet accent; red only for recording and errors, yellow only for small highlights. */
+/* Clean minimal in the brand kit palette (docs/brand/ASSET_GUIDE.md): indigo text, lavender tints, one purple accent;
+   coral only for recording and errors, yellow only for small highlights. Text variants are darkened or lightened for 4.5:1. */
 @theme {
-  --color-page: #f4f2fd;
+  --color-page: #f6f2ff;
   --color-panel: #ffffff;
-  --color-subtle: #f4f2fd;
-  --color-raised: #eeeafd;
-  --color-line: #e6e2f6;
-  --color-line-strong: #d3cdee;
-  --color-ink: #1b1446;
-  --color-muted: #56507a;
-  --color-faint: #6b6590;
-  --color-accent: #5b3fd6;
-  --color-accent-soft: #eeeafd;
-  --color-accent-ink: #5b3fd6;
-  --color-rec: #f04438;
-  --color-rec-soft: #fef3f2;
-  --color-rec-ink: #b42318;
-  --color-spark: #f5c518;
+  --color-subtle: #f6f2ff;
+  --color-raised: #efe7ff;
+  --color-line: #e7dcff;
+  --color-line-strong: #d3c4fb;
+  --color-ink: #15144f;
+  --color-muted: #55537d;
+  --color-faint: #625f8a;
+  --color-accent: #6035e9;
+  --color-accent-soft: #e7dcff;
+  --color-accent-ink: #6035e9;
+  --color-rec: #ff515e;
+  --color-rec-soft: #fff1f2;
+  --color-rec-ink: #c21f2f;
+  --color-spark: #ffc51a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-page: #0f0c20;
-    --color-panel: #15122b;
-    --color-subtle: #1c1838;
-    --color-raised: #262048;
-    --color-line: #2a2550;
-    --color-line-strong: #3d3766;
-    --color-ink: #f1effb;
-    --color-muted: #aba6c9;
-    --color-faint: #8f89b3;
-    --color-accent: #8b74ff;
-    --color-accent-soft: #2a2257;
-    --color-accent-ink: #a08eff;
-    --color-rec: #f04438;
-    --color-rec-soft: #2e1520;
-    --color-rec-ink: #fda29b;
+    --color-page: #0c0b2b;
+    --color-panel: #12113a;
+    --color-subtle: #191848;
+    --color-raised: #232156;
+    --color-line: #29276a;
+    --color-line-strong: #3a3780;
+    --color-ink: #f2f0ff;
+    --color-muted: #aeabd6;
+    --color-faint: #908dbd;
+    --color-accent: #8d62fa;
+    --color-accent-soft: #2c2370;
+    --color-accent-ink: #a98bff;
+    --color-rec: #ff515e;
+    --color-rec-soft: #3a1527;
+    --color-rec-ink: #ff9aa2;
   }
 }
 
@@ -54,17 +55,12 @@
   *, ::before, ::after { border-color: var(--color-line); }
   input[type=checkbox], input[type=radio] { accent-color: var(--color-accent); }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  h1, h2, h3 { font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  h1, h2, h3 { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 }
 
 @layer components {
   .icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
   .icon-solid { fill: currentColor; stroke: none; }
-
-  .logo { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 6px; background: #5b3fd6; color: #fff; }
-  .logo .icon { width: 11px; height: 11px; }
-  .logo-lg { width: 44px; height: 44px; border-radius: 12px; }
-  .logo-lg .icon { width: 20px; height: 20px; }
 
   /* Ghost buttons: no fill until hovered; the primary one is tinted violet. */
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--color-line-strong); border-radius: 6px; background: transparent; color: var(--color-ink); font-weight: 500; white-space: nowrap; cursor: pointer; }

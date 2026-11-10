@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { Check, Keyboard, Lock, Logo, Pin, Reload, SHORTCUT } from '../../src/ui/icons';
+import { Check, Keyboard, Lock, Mascot, Pin, Reload, SHORTCUT } from '../../src/ui/icons';
 import '../../assets/tailwind.css';
 
 const STEPS = [
@@ -32,8 +32,8 @@ function Onboarding() {
   return (
     <main className="mx-auto flex max-w-170 flex-col gap-8 px-6 py-16">
       <header className="flex flex-col items-center gap-3 text-center">
-        <Logo big />
-        <h1 className="text-[26px] font-bold tracking-tight">{whatsNew ? "What's new in Easy Web Macros 2" : 'Welcome to Easy Web Macros'}</h1>
+        <Mascot />
+        <h1 className="text-[26px] font-extrabold tracking-tight">{whatsNew ? "What's new in Easy Web Macros 2" : 'Welcome to Easy Web Macros'}</h1>
         <p className="text-[15px] text-muted">Record what you do on a website once. Play it back with one click.</p>
       </header>
 

@@ -59,11 +59,8 @@ export const Keyboard = line('M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-
 export const Reload = line('M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5');
 export const Lock = line('M6 11h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM8 11V7a4 4 0 0 1 8 0v4');
 
-export const Logo = ({ big = false }: { big?: boolean }) => (
-  <span aria-hidden className={`logo ${big ? 'logo-lg' : ''}`}>
-    <Play />
-  </span>
-);
+export const Logo = () => <img src="/brand/app-icon.svg" alt="" className="size-6 shrink-0" />;
+export const Mascot = () => <img src="/brand/mascot.svg" alt="" className="h-40 w-auto" />;
 
 // Shown as typed on this computer; Chrome lets people change it in chrome://extensions/shortcuts.
 export const SHORTCUT = /Mac/.test(navigator.userAgent) ? 'Option+Shift+R' : 'Alt+Shift+R';
