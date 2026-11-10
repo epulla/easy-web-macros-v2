@@ -19,7 +19,7 @@ for you, step by step, while you watch.
 </p>
 
 <p align="center">
-  <img src="docs/brand/png/mascot-512.png" alt="Easy Web Macros robot holding a record, play and repeat remote" width="280">
+  <img src="docs/brand/github/readme-banner-1600x500.png" alt="Easy Web Macros: Record once. Replay anytime." width="100%">
 </p>
 
 ## What Easy Web Macros does
