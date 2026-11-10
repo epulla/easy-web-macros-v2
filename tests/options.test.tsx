@@ -43,7 +43,7 @@ describe('options editor', () => {
     const saved = (await state.macros.getValue())[0]!;
     expect(saved.steps.map((s) => s.id)).toEqual(['c', 'b', 'd', 'a']);
     expect([...document.querySelectorAll('.track-label')].map((el) => el.textContent)).toEqual(['Click c', 'Click b', 'Click d', 'Click a']);
-    expect(document.querySelector<HTMLInputElement>('input.text-base')!.value).toBe('Renamed elsewhere');
+    expect(document.querySelector<HTMLInputElement>('input[aria-label="Macro name"]')!.value).toBe('Renamed elsewhere');
   });
 
   it('moves focus to the next step after deleting the focused one', async () => {

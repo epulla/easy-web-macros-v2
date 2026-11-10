@@ -95,6 +95,9 @@
   .pending { width: 6px; height: 6px; border: 1.5px solid var(--color-faint); border-radius: 9999px; }
   .spinner { width: 12px; height: 12px; border: 2px solid color-mix(in srgb, var(--color-accent-ink) 30%, transparent); border-top-color: var(--color-accent-ink); border-radius: 9999px; }
 
+  /* ⋯ menu: a native popover placed under the button that opens it. */
+  .menu { position: fixed; inset: auto; position-area: bottom span-left; margin: 4px 0 0; min-width: 140px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-panel); padding: 4px; color: var(--color-ink); box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
+
   /* Speed choice: radio buttons drawn as one segmented control. */
   .segmented { display: inline-flex; gap: 2px; border: 1px solid var(--color-line-strong); border-radius: 6px; background: var(--color-subtle); padding: 2px; }
   .segmented label { border-radius: 4px; padding: 3px 9px; font-size: 12px; font-weight: 500; color: var(--color-muted); cursor: pointer; }

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { macros as macrosItem } from '../../src/bg/state';
 import type { ToBackground } from '../background';
 import { applyEdit, exportMacro, importMacro, type LocatorKind, type Macro, type MacroEdit, type Step } from '../../src/core/macro';
+import { Close, Download, Down, FileIn, Grip, Logo, More, Trash, Up } from '../../src/ui/icons';
 import '../../assets/tailwind.css';
 
 const ACTION: Record<Step['action'], string> = {
@@ -103,13 +104,13 @@ function Options() {
   };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
-      <header className="flex items-center gap-3">
-        <span aria-hidden className="reel" />
-        <h1 className="text-xl font-semibold tracking-wide">Easy Web Macros</h1>
-        <span aria-hidden className="reel" />
-        <p className="flex-1 text-muted">Edit your macros. Changes are saved as you go.</p>
-        <label className="btn cursor-pointer focus-within:outline-2 focus-within:outline-rec">
+    <div className="flex min-h-screen flex-col">
+      <header className="flex h-13 items-center gap-2.5 border-b px-6">
+        <Logo />
+        <h1 className="text-sm font-semibold">Easy Web Macros</h1>
+        <p className="flex-1 text-xs text-muted">Changes are saved as you go.</p>
+        <label className="btn cursor-pointer focus-within:outline-2 focus-within:outline-accent">
+          <FileIn />
           Add a macro from a file
           <input
             type="file"
@@ -124,24 +125,27 @@ function Options() {
         </label>
       </header>
       {error && (
-        <p role="alert" className="text-rec">
+        <p role="alert" className="border-b bg-rec-soft px-6 py-2 text-rec-ink">
           {error}
         </p>
       )}
       {macros.length === 0 ? (
-        <p id="empty" tabIndex={-1} className="cassette p-4">No macros yet. Click the Easy Web Macros icon in your browser toolbar and press Record.</p>
+        <p id="empty" tabIndex={-1} className="card m-6 max-w-xl">
+          No macros yet. Click the Easy Web Macros icon in your browser toolbar and press Record.
+        </p>
       ) : (
-        <div className="flex flex-col gap-4 md:flex-row md:items-start">
-          <nav aria-label="Your macros" className="flex flex-col gap-1 md:w-60 md:shrink-0">
+        <div className="flex flex-1 flex-col md:flex-row">
+          <nav aria-label="Your macros" className="flex flex-col gap-0.5 border-b bg-subtle px-3 py-4 md:w-66 md:shrink-0 md:border-r md:border-b-0">
+            <h2 className="section-title px-2 pb-2">Your macros</h2>
             {macros.map((m) => (
               <button
                 key={m.id}
                 id={`macro-${m.id}`}
-                className="cassette text-left hover:border-muted aria-[current=true]:border-rec"
+                className="rounded-md p-2 text-left hover:bg-raised aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent-ink"
                 aria-current={m.id === macro?.id}
                 onClick={() => select(m.id)}
               >
-                <span className="block truncate font-medium">{m.name}</span>
+                <span className="block font-medium [overflow-wrap:anywhere]">{m.name}</span>
                 <span className="text-xs text-muted">
                   {m.steps.length} {m.steps.length === 1 ? 'step' : 'steps'}
                 </span>
@@ -176,62 +180,71 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
     setAnnounce(`Moved step ${from + 1} to position ${to + 1}.`);
   };
 
+  // Closes the ⋯ menu a button sits in; the step it belongs to may stay on screen.
+  const closeMenu = (el: HTMLElement) => (el.closest('[popover]') as HTMLElement | null)?.hidePopover?.();
+
   return (
-    <section aria-label={`Edit ${macro.name}`} className="cassette flex min-w-0 flex-1 flex-col gap-4 p-4">
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Name
-        <input className="field text-base font-normal" value={macro.name} onChange={(e) => settings({ name: e.target.value })} />
-      </label>
-      <div className="flex flex-wrap items-end gap-4 text-sm">
-        <label className="flex flex-col gap-1">
-          Wait between steps (seconds)
-          <input
-            type="number"
-            min={0}
-            step={0.1}
-            className="field w-28"
-            value={macro.delayMs / 1000}
-            onChange={(e) => {
-              const s = e.target.valueAsNumber;
-              if (Number.isFinite(s) && s >= 0) settings({ delayMs: Math.round(s * 1000) });
-            }}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          Times to play
-          <input
-            type="number"
-            min={1}
-            step={1}
-            className="field w-24 disabled:opacity-50"
-            disabled={macro.loop}
-            value={macro.runs}
-            onChange={(e) => {
-              const n = e.target.valueAsNumber;
-              if (Number.isInteger(n) && n >= 1) settings({ runs: n });
-            }}
-          />
-        </label>
-        <label className="flex items-center gap-2 pb-1.5">
-          <input type="checkbox" checked={macro.loop} onChange={(e) => settings({ loop: e.target.checked })} />
-          Keep repeating until I press Stop
-        </label>
+    <section aria-label={`Edit ${macro.name}`} className="flex max-w-4xl min-w-0 flex-1 flex-col gap-6 px-8 py-6">
+      <div className="flex flex-col gap-3">
+        <input
+          aria-label="Macro name"
+          className="field -ml-2.5 h-10 border-transparent bg-transparent px-2.5 text-lg font-semibold hover:border-line-strong"
+          value={macro.name}
+          onChange={(e) => settings({ name: e.target.value })}
+        />
+        <div className="flex flex-wrap items-end gap-6">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
+            Wait between steps (seconds)
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              className="field w-30 text-sm font-normal"
+              value={macro.delayMs / 1000}
+              onChange={(e) => {
+                const s = e.target.valueAsNumber;
+                if (Number.isFinite(s) && s >= 0) settings({ delayMs: Math.round(s * 1000) });
+              }}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
+            Times to play
+            <input
+              type="number"
+              min={1}
+              step={1}
+              className="field w-22 text-sm font-normal disabled:opacity-50"
+              disabled={macro.loop}
+              value={macro.runs}
+              onChange={(e) => {
+                const n = e.target.valueAsNumber;
+                if (Number.isInteger(n) && n >= 1) settings({ runs: n });
+              }}
+            />
+          </label>
+          <label className="flex h-8 items-center gap-2">
+            <input type="checkbox" checked={macro.loop} onChange={(e) => settings({ loop: e.target.checked })} />
+            Keep repeating until I press Stop
+          </label>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        <h2 id="steps-title" tabIndex={-1} className="font-semibold">
-          Steps
-        </h2>
-        <p className="text-sm text-muted">Drag the ⋮⋮ handle or use the arrow buttons to change the order.</p>
+        <div className="flex items-baseline gap-3">
+          <h2 id="steps-title" tabIndex={-1} className="text-sm font-semibold">
+            Steps
+          </h2>
+          <p className="text-xs text-muted">Drag to reorder, or use the arrows.</p>
+        </div>
         <p aria-live="polite" className="sr-only">
           {announce}
         </p>
-        {macro.steps.length === 0 && <p className="text-sm text-muted">This macro has no steps.</p>}
-        <ol className="tracks">
+        {macro.steps.length === 0 && <p className="text-muted">This macro has no steps.</p>}
+        <ol className="rows overflow-visible">
           {macro.steps.map((step, i) => (
             <li
               key={step.id}
-              className={`flex flex-col gap-2 rounded ${dragFrom === i ? 'opacity-50' : ''}`}
+              className={dragFrom === i ? 'opacity-50' : ''}
               onDragOver={(e) => dragFrom !== null && e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
@@ -239,12 +252,12 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
                 setDragFrom(null);
               }}
             >
-              <div className="track flex-wrap">
+              <div className="group flex min-h-11 items-center gap-2.5 px-2 hover:bg-subtle">
                 <span
                   draggable
                   aria-hidden
                   title="Drag to move"
-                  className="cursor-grab select-none text-muted"
+                  className="cursor-grab text-faint select-none"
                   onDragStart={(e) => {
                     setDragFrom(i);
                     e.dataTransfer.effectAllowed = 'move';
@@ -253,53 +266,69 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
                   }}
                   onDragEnd={() => setDragFrom(null)}
                 >
-                  ⋮⋮
+                  <Grip />
                 </span>
-                <span className="track-no">{String(i + 1).padStart(2, '0')}</span>
-                <span className="rounded border px-1.5 text-xs text-muted">{ACTION[step.action]}</span>
-                <span className="track-label min-w-0 flex-1 truncate">{step.label || 'Untitled step'}</span>
-                <span className="flex gap-1">
-                  <button id={`up-${step.id}`} className="btn px-2" aria-label={`Move step ${i + 1} up`} disabled={i === 0} onClick={() => move(i, i - 1, [`up-${step.id}`, `down-${step.id}`])}>
-                    ↑
+                <span className="w-5 text-right text-xs text-faint tabular-nums">{i + 1}</span>
+                <span className="w-18 shrink-0 rounded bg-raised px-1.5 py-0.5 text-center text-[11px] font-medium text-muted">{ACTION[step.action]}</span>
+                <span className="track-label min-w-0 flex-1 truncate" title={step.label}>
+                  {step.label || 'Untitled step'}
+                </span>
+                {/* Faint until the row is pointed at or focused, but always readable. */}
+                <span className="flex gap-0.5 text-faint group-focus-within:text-ink group-hover:text-ink">
+                  <button id={`up-${step.id}`} className="btn btn-ghost btn-icon text-inherit" aria-label={`Move step ${i + 1} up`} disabled={i === 0} onClick={() => move(i, i - 1, [`up-${step.id}`, `down-${step.id}`])}>
+                    <Up />
                   </button>
                   <button
                     id={`down-${step.id}`}
-                    className="btn px-2"
+                    className="btn btn-ghost btn-icon text-inherit"
                     aria-label={`Move step ${i + 1} down`}
                     disabled={i === macro.steps.length - 1}
                     onClick={() => move(i, i + 1, [`down-${step.id}`, `up-${step.id}`])}
                   >
-                    ↓
+                    <Down />
                   </button>
                   <button
                     id={`edit-btn-${step.id}`}
-                    className="btn"
+                    className="btn btn-ghost text-inherit"
                     aria-label={`Edit step ${i + 1}`}
                     aria-expanded={open === step.id}
                     aria-controls={`edit-${step.id}`}
                     onClick={() => setOpen(open === step.id ? null : step.id)}
                   >
-                    Edit
+                    {open === step.id ? 'Done' : 'Edit'}
                   </button>
-                  <button className="btn" aria-label={`Duplicate step ${i + 1}`} onClick={() => edit({ type: 'duplicate', stepId: step.id, newId: crypto.randomUUID() })}>
-                    Duplicate
+                  <button className="btn btn-ghost btn-icon text-inherit" aria-label={`More for step ${i + 1}`} popoverTarget={`menu-${step.id}`}>
+                    <More />
                   </button>
-                  <button
-                    className="btn text-rec"
-                    aria-label={`Delete step ${i + 1}`}
-                    onClick={() => {
-                      if (!confirm(`Delete step ${i + 1}, "${step.label}"?`)) return;
-                      const near = macro.steps[i + 1] ?? macro.steps[i - 1];
-                      edit({ type: 'delete-step', stepId: step.id });
-                      focusSoon(near ? `edit-btn-${near.id}` : 'steps-title');
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <div id={`menu-${step.id}`} popover="auto" className="menu">
+                    <button
+                      className="btn btn-ghost w-full justify-start text-ink"
+                      aria-label={`Duplicate step ${i + 1}`}
+                      onClick={(e) => {
+                        closeMenu(e.currentTarget);
+                        edit({ type: 'duplicate', stepId: step.id, newId: crypto.randomUUID() });
+                      }}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-danger w-full justify-start"
+                      aria-label={`Delete step ${i + 1}`}
+                      onClick={(e) => {
+                        closeMenu(e.currentTarget);
+                        if (!confirm(`Delete step ${i + 1}, "${step.label}"?`)) return;
+                        const near = macro.steps[i + 1] ?? macro.steps[i - 1];
+                        edit({ type: 'delete-step', stepId: step.id });
+                        focusSoon(near ? `edit-btn-${near.id}` : 'steps-title');
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </span>
               </div>
               {open === step.id && (
-                <div id={`edit-${step.id}`} className="ml-2 border-l-2 border-tape pl-3 pb-2">
+                <div id={`edit-${step.id}`} className="border-t bg-subtle py-4 pr-4 pl-18">
                   <StepFields step={step} change={(patch) => edit({ type: 'step', stepId: step.id, patch })} />
                 </div>
               )}
@@ -308,7 +337,7 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
         </ol>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t pt-3">
+      <div className="flex flex-wrap gap-2 border-t pt-4">
         <button
           className="btn"
           onClick={() => {
@@ -319,9 +348,11 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
             setTimeout(() => URL.revokeObjectURL(a.href), 1000);
           }}
         >
+          <Download />
           Save to a file
         </button>
-        <button className="btn text-rec" onClick={() => confirm(`Delete "${macro.name}"? This can't be undone.`) && remove()}>
+        <button className="btn btn-ghost btn-danger" onClick={() => confirm(`Delete "${macro.name}"? This can't be undone.`) && remove()}>
+          <Trash />
           Delete this macro
         </button>
       </div>
@@ -331,13 +362,13 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
 
 function StepFields({ step, change }: { step: Step; change: (patch: Partial<Step>) => void }) {
   const text = (label: string, value: string, set: (v: string) => void, type = 'text') => (
-    <label className="flex flex-col gap-1">
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
       {label}
-      <input type={type} className="field" value={value} onChange={(e) => set(e.target.value)} />
+      <input type={type} className="field text-sm font-normal text-ink" value={value} onChange={(e) => set(e.target.value)} />
     </label>
   );
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-3">
       {text('Step name', step.label, (label) => change({ label }))}
       {step.action === 'type' &&
         (step.secret ? (
@@ -364,16 +395,16 @@ function StepFields({ step, change }: { step: Step; change: (patch: Partial<Step
       )}
       {step.action !== 'navigate' && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="font-medium">How to find it on the page</legend>
+          <legend className="mb-1.5 text-xs font-medium text-muted">How to find it on the page</legend>
           <p className="text-xs text-muted">
             Tried from top to bottom until one matches. CSS selector and XPath are only used when no other way is listed, because they can point at
             the wrong thing after a page changes. Easier: play the macro and use "Pick it on the page" when a step fails.
           </p>
           {step.locators.map((l, j) => (
-            <div key={j} className="flex gap-2">
+            <div key={j} className="flex gap-1.5">
               <select
                 aria-label={`Way ${j + 1}: type`}
-                className="field"
+                className="field w-40"
                 value={l.kind}
                 onChange={(e) => change({ locators: step.locators.with(j, { ...l, kind: e.target.value as LocatorKind }) })}
               >
@@ -385,13 +416,13 @@ function StepFields({ step, change }: { step: Step; change: (patch: Partial<Step
               </select>
               <input
                 aria-label={`Way ${j + 1}: value`}
-                className="field min-w-0 flex-1 font-mono text-xs"
+                className="field flex-1 font-mono text-xs"
                 value={l.value}
                 onChange={(e) => change({ locators: step.locators.with(j, { ...l, value: e.target.value }) })}
               />
               <button
                 id={`loc-rm-${step.id}-${j}`}
-                className="btn"
+                className="btn btn-ghost btn-icon h-8 w-8"
                 aria-label={`Remove way ${j + 1}`}
                 onClick={() => {
                   change({ locators: step.locators.toSpliced(j, 1) });
@@ -399,12 +430,12 @@ function StepFields({ step, change }: { step: Step; change: (patch: Partial<Step
                   focusSoon(`loc-rm-${step.id}-${j + 1 < step.locators.length ? j : j - 1}`, `loc-add-${step.id}`);
                 }}
               >
-                Remove
+                <Close />
               </button>
             </div>
           ))}
-          <button id={`loc-add-${step.id}`} className="btn self-start" onClick={() => change({ locators: [...step.locators, { kind: 'text', value: '' }] })}>
-            Add a way to find it
+          <button id={`loc-add-${step.id}`} className="btn btn-ghost self-start px-1" onClick={() => change({ locators: [...step.locators, { kind: 'text', value: '' }] })}>
+            + Add a way to find it
           </button>
         </fieldset>
       )}
