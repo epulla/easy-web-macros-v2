@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
-import { DEFAULTS, type Step } from '../core/macro';
+import { DEFAULTS, defaultName, type Step } from '../core/macro';
 import { applyOp, type RecordOp } from '../core/recorder';
 import { updateMacros } from './state';
 
@@ -8,6 +8,8 @@ export interface Recording {
   tabs: number[];
   steps: Step[];
   hover: boolean;
+  // From the start page's title and address; the date stands in when there is none.
+  name?: string;
 }
 
 // Session storage outlives the background worker going to sleep, not the browser.
@@ -42,7 +44,7 @@ export const stopRecording = () =>
     if (!r) return;
     // Save first: if saving fails, the recording stays so Stop can be tried again.
     if (r.steps.length) {
-      const name = `New macro ${new Date().toLocaleString()}`;
+      const name = r.name ?? `New macro ${new Date().toLocaleString()}`;
       await updateMacros((ms) => [...ms, { id: crypto.randomUUID(), name, steps: r.steps, ...DEFAULTS }]);
     }
     await recording.setValue(null);
@@ -90,7 +92,7 @@ export const hello = (tabId: number, { url, top, openerTabId }: Page) =>
   });
 
 // The page the recording starts on.
-export const firstPage = (tabId: number, url: string) =>
+export const firstPage = (tabId: number, url: string, title = '') =>
   update(async (r) => {
-    if (r?.tabs.includes(tabId)) await recording.setValue(visit(r, url, false));
+    if (r?.tabs.includes(tabId)) await recording.setValue({ ...visit(r, url, false), name: defaultName(url, title) });
   });

@@ -7,7 +7,7 @@ import type { RecordOp } from '../src/core/recorder';
 
 export type ToBackground =
   | { type: 'hello'; url: string; top: boolean }
-  | { type: 'started'; url: string }
+  | { type: 'started'; url: string; title: string }
   | { type: 'op'; op: RecordOp }
   | { type: 'start'; tabId: number; hover: boolean }
   | { type: 'stop' }
@@ -63,7 +63,7 @@ export default defineBackground(() => {
     if (tabId === undefined) return;
     if (msg.type === 'hello' && msg.top) pageLoaded(tabId, sender.tab?.openerTabId);
     if (msg.type === 'hello') return hello(tabId, { ...msg, openerTabId: sender.tab?.openerTabId });
-    if (msg.type === 'started') void firstPage(tabId, msg.url);
+    if (msg.type === 'started') void firstPage(tabId, msg.url, msg.title);
     if (msg.type === 'op') void addOp(tabId, msg.op);
   });
 

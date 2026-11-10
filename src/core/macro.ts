@@ -34,6 +34,18 @@ export interface Macro {
 
 export const DEFAULTS = { delayMs: 1000, runs: 1, loop: false } as const;
 
+// "Log in | Example Corp" on https://www.example.com/login → "Log in · example.com".
+export function defaultName(url: string, title: string): string | undefined {
+  let host = '';
+  try {
+    host = new URL(url).hostname.replace(/^www\./, '');
+  } catch {}
+  let page = title.split(/\s+[|·•–—-]\s+/)[0]!.replace(/\s+/g, ' ').trim();
+  if (page.length > 60) page = `${page.slice(0, 59).trimEnd()}…`;
+  if (page.toLowerCase() === host) page = '';
+  return [page, host].filter(Boolean).join(' · ') || undefined;
+}
+
 // v1 0.0.6 shapes, from epulla/easy-web-macros src/lib/step.ts and collection.ts
 export interface V1Step {
   id: string;

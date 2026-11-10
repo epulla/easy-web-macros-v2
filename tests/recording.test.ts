@@ -30,6 +30,21 @@ describe('recording', () => {
     expect(sent).toEqual([[1, { type: 'start', hover: true }], [1, { type: 'stop' }]]);
   });
 
+  it('names the macro after the start page, or the date when there is none', async () => {
+    const r = await load();
+    await r.startRecording(1);
+    await r.firstPage(1, 'https://www.example.com/login', 'Log in | Example');
+    await r.stopRecording();
+    await r.startRecording(1);
+    await r.addOp(1, { op: 'put', step: step('a') });
+    await r.stopRecording();
+
+    const { macros } = await import('../src/bg/state');
+    const [first, second] = (await macros.getValue()).map((m) => m.name);
+    expect(first).toBe('Log in · example.com');
+    expect(second).toMatch(/^New macro /);
+  });
+
   it('tells a reloaded page in the recording tab to keep recording', async () => {
     const r = await load();
     await r.startRecording(1);

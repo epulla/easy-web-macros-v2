@@ -86,7 +86,7 @@ export default defineContentScript({
       }
       if (msg.type === 'start') {
         begin(msg.hover);
-        if (top) void send({ type: 'started', url: location.href });
+        if (top) void send({ type: 'started', url: location.href, title: document.title });
       }
       if (msg.type === 'stop') end();
     });

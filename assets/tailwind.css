@@ -1,83 +1,115 @@
 @import "tailwindcss";
 
-/* Tape deck: cream body and dark tape window in light mode, graphite body in dark mode. */
+/* Clean minimal: neutral greys, one indigo accent, red only for recording and errors. */
 @theme {
-  --color-deck: #efebe2;
-  --color-panel: #fbfaf6;
-  --color-ink: #1d1b18;
-  --color-muted: #5e584e;
-  --color-line: #d6cfc0;
-  --color-rec: #c8261b;
-  --color-tape: #8a5a2b;
-  --color-ok: #2f7a3e;
-  --color-warn: #8a5a00;
-  --color-lcd: #1f2a22;
-  --color-lcd-ink: #b8f0b0;
-  --font-lcd: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --color-page: #f4f4f5;
+  --color-panel: #ffffff;
+  --color-subtle: #f7f7f8;
+  --color-raised: #f0f0f2;
+  --color-line: #e4e4e7;
+  --color-line-strong: #d4d4d8;
+  --color-ink: #18181b;
+  --color-muted: #5f5f6b;
+  --color-faint: #71717a;
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #eef0ff;
+  --color-accent-ink: #4338ca;
+  --color-rec: #dc2626;
+  --color-rec-soft: #fef2f2;
+  --color-rec-ink: #b91c1c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-deck: #1a1a1d;
-    --color-panel: #252528;
-    --color-ink: #ecebe6;
-    --color-muted: #a9a59b;
-    --color-line: #3c3b40;
-    --color-rec: #ff6b5e;
-    --color-tape: #d7a46a;
-    --color-ok: #7fd18b;
-    --color-warn: #f0c060;
-    --color-lcd: #0e1410;
-    --color-lcd-ink: #9be892;
+    --color-page: #0e0e10;
+    --color-panel: #18181b;
+    --color-subtle: #1f1f23;
+    --color-raised: #27272b;
+    --color-line: #2e2e33;
+    --color-line-strong: #3f3f46;
+    --color-ink: #f4f4f5;
+    --color-muted: #a1a1aa;
+    --color-faint: #8a8a94;
+    --color-accent: #4f46e5;
+    --color-accent-hover: #6366f1;
+    --color-accent-soft: #23234a;
+    --color-accent-ink: #a5b4fc;
+    --color-rec: #ef4444;
+    --color-rec-soft: #2c1517;
+    --color-rec-ink: #fca5a5;
   }
 }
 
 @layer base {
   :root { color-scheme: light dark; }
-  body { background: var(--color-deck); color: var(--color-ink); font: 14px/1.4 system-ui, sans-serif; }
+  body { background: var(--color-panel); color: var(--color-ink); font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
   *, ::before, ::after { border-color: var(--color-line); }
-  input[type=checkbox], input[type=radio], input[type=range] { accent-color: var(--color-rec); }
-  :focus-visible { outline: 2px solid var(--color-rec); outline-offset: 2px; }
+  input[type=checkbox], input[type=radio] { accent-color: var(--color-accent); }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 }
 
 @layer components {
-  .btn { display: inline-flex; align-items: center; gap: .375rem; border: 1px solid var(--color-line); border-radius: .375rem; background: var(--color-panel); padding: .25rem .625rem; font-size: .8125rem; font-weight: 500; color: var(--color-ink); cursor: pointer; box-shadow: 0 1px 0 var(--color-line); }
-  .btn:hover { border-color: var(--color-muted); }
-  .btn:active { transform: translateY(1px); box-shadow: none; }
+  .icon { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-solid { fill: currentColor; stroke: none; }
+
+  .logo { display: inline-grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 6px; background: var(--color-accent); color: #fff; }
+  .logo .icon { width: 11px; height: 11px; }
+  .logo-lg { width: 44px; height: 44px; border-radius: 12px; }
+  .logo-lg .icon { width: 20px; height: 20px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--color-line-strong); border-radius: 6px; background: var(--color-panel); color: var(--color-ink); font-weight: 500; white-space: nowrap; cursor: pointer; }
+  .btn:hover { background: var(--color-raised); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
+  .btn-primary:hover { border-color: var(--color-accent-hover); background: var(--color-accent-hover); }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--color-muted); }
+  .btn-ghost:hover { color: var(--color-ink); }
+  .btn-danger { color: var(--color-rec-ink); }
+  .btn-icon { width: 28px; padding: 0; }
+  .btn-lg { height: 36px; padding: 0 14px; }
 
-  /* Chunky transport keys: record, play, pause, stop. */
-  .key { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.5rem; border: 1px solid var(--color-line); border-radius: .5rem; background: linear-gradient(var(--color-panel), var(--color-deck)); padding: .375rem .875rem; font-weight: 600; color: var(--color-ink); cursor: pointer; box-shadow: 0 3px 0 var(--color-line), inset 0 1px 0 rgb(255 255 255 / .25); }
-  .key:hover { border-color: var(--color-muted); }
-  .key:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--color-line); }
-  .key-sm { min-height: 2rem; padding: .25rem .625rem; font-size: .8125rem; }
-  .dot { display: inline-block; width: .75rem; height: .75rem; border-radius: 9999px; background: var(--color-rec); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-rec) 25%, transparent); }
+  .dot { display: inline-block; width: 10px; height: 10px; flex: none; border-radius: 9999px; background: var(--color-rec); }
+  .kbd { border: 1px solid var(--color-line); border-bottom-width: 2px; border-radius: 4px; background: var(--color-subtle); padding: 2px 5px; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1; color: var(--color-muted); white-space: nowrap; }
+  .section-title { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--color-faint); }
+  .card { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-subtle); padding: 12px; }
+  .alert { display: flex; gap: 8px; border: 1px solid color-mix(in srgb, var(--color-rec) 35%, var(--color-line)); border-radius: 8px; background: var(--color-rec-soft); padding: 12px; }
+  .alert .icon { margin-top: 2px; color: var(--color-rec-ink); }
+  .note { display: flex; gap: 8px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-accent-soft); padding: 12px; }
+  .field { height: 32px; min-width: 0; border: 1px solid var(--color-line-strong); border-radius: 6px; background: var(--color-panel); padding: 0 10px; color: var(--color-ink); }
+  .progress { height: 4px; overflow: hidden; border-radius: 2px; background: var(--color-raised); }
+  .progress > span { display: block; height: 100%; border-radius: 2px; background: var(--color-accent); transition: width .2s; }
 
-  /* Tape window: status text in an LCD strip. */
-  .lcd { border-radius: .375rem; background: var(--color-lcd); padding: .375rem .625rem; font-family: var(--font-lcd); font-size: .8125rem; letter-spacing: .04em; color: var(--color-lcd-ink); box-shadow: inset 0 2px 4px rgb(0 0 0 / .45); }
+  /* Bordered list of rows: macros in the popup, steps while recording or playing, steps in the editor. */
+  .rows { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-panel); }
+  .rows > li + li { border-top: 1px solid var(--color-line); }
 
-  .reel { display: inline-block; width: 1.25rem; height: 1.25rem; border-radius: 9999px; border: 3px solid var(--color-tape); background: radial-gradient(circle, var(--color-panel) 0 22%, var(--color-tape) 23% 32%, transparent 33%), conic-gradient(var(--color-tape) 0 10%, transparent 10% 33%, var(--color-tape) 33% 43%, transparent 43% 66%, var(--color-tape) 66% 76%, transparent 76%); }
+  .step { display: flex; align-items: flex-start; gap: 10px; padding: 7px 12px; color: var(--color-muted); }
+  .step-icon { display: grid; place-items: center; width: 16px; height: 19px; flex: none; }
+  .step-state { font-size: 12px; white-space: nowrap; }
+  .step[data-status="running"] { background: var(--color-accent-soft); color: var(--color-ink); }
+  .step[data-status="running"] :is(.step-icon, .step-state) { color: var(--color-accent-ink); }
+  .step[data-status="failed"] { background: var(--color-rec-soft); color: var(--color-ink); }
+  .step[data-status="failed"] :is(.step-icon, .step-state) { color: var(--color-rec-ink); }
+  .step[data-status="skipped"] .track-label { text-decoration: line-through; }
+  .pending { width: 6px; height: 6px; border: 1.5px solid var(--color-faint); border-radius: 9999px; }
+  .spinner { width: 12px; height: 12px; border: 2px solid color-mix(in srgb, var(--color-accent-ink) 30%, transparent); border-top-color: var(--color-accent-ink); border-radius: 9999px; }
 
-  .cassette { border: 1px solid var(--color-line); border-radius: .625rem; background: var(--color-panel); padding: .5rem .625rem; }
+  /* Speed choice: radio buttons drawn as one segmented control. */
+  .segmented { display: inline-flex; gap: 2px; border: 1px solid var(--color-line-strong); border-radius: 6px; background: var(--color-subtle); padding: 2px; }
+  .segmented label { border-radius: 4px; padding: 3px 9px; font-size: 12px; font-weight: 500; color: var(--color-muted); cursor: pointer; }
+  .segmented label:has(:checked) { background: var(--color-panel); color: var(--color-ink); box-shadow: 0 0 0 1px var(--color-line-strong); }
+  .segmented label:has(:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 
-  /* Steps as tracks on a strip of tape. */
-  .tracks { display: flex; flex-direction: column; gap: 2px; border-left: 3px solid var(--color-tape); padding-left: .375rem; }
-  .track { position: relative; display: flex; align-items: center; gap: .5rem; border-radius: .25rem; background: color-mix(in srgb, var(--color-tape) 8%, transparent); padding: .25rem .375rem; font-size: .8125rem; }
-  .track-no { flex-shrink: 0; min-width: 1.5rem; font-family: var(--font-lcd); font-size: .75rem; color: var(--color-muted); }
-  .track[data-status="running"] { background: color-mix(in srgb, var(--color-rec) 14%, transparent); font-weight: 600; }
-  .track[data-status="done"] { background: color-mix(in srgb, var(--color-ok) 14%, transparent); }
-  .track[data-status="skipped"] { opacity: .6; }
-  .track[data-status="skipped"] .track-label { text-decoration: line-through; }
-  /* A failed step looks scratched: a jagged red line across the track. */
-  .track[data-status="failed"] { background: color-mix(in srgb, var(--color-rec) 10%, transparent); color: var(--color-rec); font-weight: 600; }
-  .track[data-status="failed"]::after { position: absolute; inset: 0; content: ''; pointer-events: none; background: linear-gradient(172deg, transparent 46%, var(--color-rec) 47% 50%, transparent 51%), linear-gradient(176deg, transparent 58%, color-mix(in srgb, var(--color-rec) 60%, transparent) 59% 61%, transparent 62%); opacity: .55; }
-
-  .field { border: 1px solid var(--color-muted); border-radius: .375rem; background: var(--color-panel); padding: .25rem .5rem; color: var(--color-ink); }
+  .switch { position: relative; width: 32px; height: 18px; flex: none; appearance: none; border-radius: 9px; background: var(--color-line-strong); cursor: pointer; }
+  .switch::after { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .2); content: ''; transition: left .15s; }
+  .switch:checked { background: var(--color-accent); }
+  .switch:checked::after { left: 16px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .spin { animation: spin 2.4s linear infinite; }
-  .blink { animation: blink 1.2s steps(2, start) infinite; }
+  .spinner { animation: spin .8s linear infinite; }
+  .pulse { animation: pulse 1.6s ease-in-out infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes blink { to { visibility: hidden; } }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-rec) 22%, transparent); } }
 }
