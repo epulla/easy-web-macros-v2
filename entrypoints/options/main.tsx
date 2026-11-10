@@ -107,7 +107,7 @@ function Options() {
     <div className="flex min-h-screen flex-col">
       <header className="flex h-13 items-center gap-2.5 border-b px-6">
         <Logo />
-        <h1 className="text-sm font-semibold">Easy Web Macros</h1>
+        <h1 className="text-sm font-bold">Easy Web Macros</h1>
         <p className="flex-1 text-xs text-muted">Changes are saved as you go.</p>
         <label className="btn cursor-pointer focus-within:outline-2 focus-within:outline-accent">
           <FileIn />
@@ -231,7 +231,7 @@ function MacroEditor({ macro, edit, remove }: { macro: Macro; edit: (e: MacroEdi
 
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline gap-3">
-          <h2 id="steps-title" tabIndex={-1} className="text-sm font-semibold">
+          <h2 id="steps-title" tabIndex={-1} className="text-sm font-bold">
             Steps
           </h2>
           <p className="text-xs text-muted">Drag to reorder, or use the arrows.</p>

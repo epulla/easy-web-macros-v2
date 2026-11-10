@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Headings only; bundled so nothing loads from the network. License: fonts/Nunito-OFL.txt */
+@font-face {
+  font-family: "Nunito";
+  src: url("./fonts/nunito-latin.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-display: swap;
+}
+
 /* Clean minimal in the brand palette: navy text, lavender surfaces, one violet accent; red only for recording and errors, yellow only for small highlights. */
 @theme {
   --color-page: #f4f2fd;
@@ -46,6 +54,7 @@
   *, ::before, ::after { border-color: var(--color-line); }
   input[type=checkbox], input[type=radio] { accent-color: var(--color-accent); }
   :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  h1, h2, h3 { font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 }
 
 @layer components {
@@ -72,7 +81,7 @@
 
   .dot { display: inline-block; width: 10px; height: 10px; flex: none; border-radius: 9999px; background: var(--color-rec); }
   .kbd { border: 1px solid var(--color-line); border-bottom-width: 2px; border-radius: 4px; background: var(--color-subtle); padding: 2px 5px; font-family: inherit; font-size: 11px; font-weight: 500; line-height: 1; color: var(--color-muted); white-space: nowrap; }
-  .section-title { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--color-faint); }
+  .section-title { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--color-faint); }
   .card { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--color-line); border-radius: 8px; background: var(--color-subtle); padding: 12px; }
   .alert { display: flex; gap: 8px; border: 1px solid color-mix(in srgb, var(--color-rec) 35%, var(--color-line)); border-radius: 8px; background: var(--color-rec-soft); padding: 12px; }
   .alert .icon { margin-top: 2px; color: var(--color-rec-ink); }

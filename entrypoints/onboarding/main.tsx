@@ -33,13 +33,13 @@ function Onboarding() {
     <main className="mx-auto flex max-w-170 flex-col gap-8 px-6 py-16">
       <header className="flex flex-col items-center gap-3 text-center">
         <Logo big />
-        <h1 className="text-[26px] font-semibold tracking-tight">{whatsNew ? "What's new in Easy Web Macros 2" : 'Welcome to Easy Web Macros'}</h1>
+        <h1 className="text-[26px] font-bold tracking-tight">{whatsNew ? "What's new in Easy Web Macros 2" : 'Welcome to Easy Web Macros'}</h1>
         <p className="text-[15px] text-muted">Record what you do on a website once. Play it back with one click.</p>
       </header>
 
       {whatsNew && (
         <section aria-labelledby="new-title" className="flex flex-col gap-3 rounded-[10px] border p-4">
-          <h2 id="new-title" className="text-sm font-semibold">
+          <h2 id="new-title" className="text-sm font-bold">
             What changed
           </h2>
           <ul className="flex flex-col gap-2">
@@ -56,7 +56,7 @@ function Onboarding() {
       )}
 
       <section aria-labelledby="how-title" className="flex flex-col gap-3">
-        <h2 id="how-title" className={whatsNew ? 'text-sm font-semibold' : 'sr-only'}>
+        <h2 id="how-title" className={whatsNew ? 'text-sm font-bold' : 'sr-only'}>
           How it works
         </h2>
         <ol className="grid gap-3 sm:grid-cols-3">
@@ -65,7 +65,7 @@ function Onboarding() {
               <span aria-hidden className="grid size-5.5 place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent-ink">
                 {i + 1}
               </span>
-              <h3 className="text-sm font-semibold">{title}</h3>
+              <h3 className="text-sm font-bold">{title}</h3>
               <p className="text-muted">{text}</p>
             </li>
           ))}

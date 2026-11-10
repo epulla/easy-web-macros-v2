@@ -125,12 +125,12 @@ function Popup() {
             <button className="btn btn-ghost btn-icon -ml-2" aria-label="Back to your macros" onClick={() => setSettings(false)}>
               <Back />
             </button>
-            <h1 className="flex-1 font-semibold">Settings</h1>
+            <h1 className="flex-1 font-bold">Settings</h1>
           </>
         ) : (
           <>
             <Logo />
-            <h1 className="flex-1 font-semibold">Easy Web Macros</h1>
+            <h1 className="flex-1 font-bold">Easy Web Macros</h1>
             {!rec && !run && (
               <button className="btn btn-ghost btn-icon -mr-2" aria-label="Settings" onClick={() => setSettings(true)}>
                 <Gear />
@@ -310,7 +310,7 @@ function Popup() {
             )}
             {prompt === 'showing' && (
               <section aria-labelledby="rate-title" className="card">
-                <h2 id="rate-title" className="font-semibold">
+                <h2 id="rate-title" className="font-bold">
                   Is Easy Web Macros saving you time?
                 </h2>
                 <p className="text-xs text-muted">A quick rating on the Chrome Web Store helps other people find it.</p>
