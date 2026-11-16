@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut an Easy Web Macros release - bump version, build Chrome and Firefox zips with pnpm, tag, and publish a GitHub release with gh. Use only when asked to release, publish, tag, or ship a new Easy Web Macros version.
+description: Cut an Easy Web Macros release - bump version, build the Chrome zip with pnpm, tag, and publish a GitHub release with gh. Use only when asked to release, publish, tag, or ship a new Easy Web Macros version.
 ---
 
 # Release
@@ -26,16 +26,24 @@ Use pnpm only. Releases are cut from `main`.
 
 ```sh
 pnpm compile && pnpm test
-pnpm zip && pnpm zip:firefox
+pnpm zip
 ls .output/*.zip
 ```
 
-Expect `easy-web-macros-X.Y.Z-chrome.zip`, `easy-web-macros-X.Y.Z-firefox.zip`, and `easy-web-macros-X.Y.Z-sources.zip`. Stop if expected archives are absent or version differs.
+Expect `easy-web-macros-X.Y.Z-chrome.zip`. Stop if it is absent or the version differs.
 
 ## Publish
 
-Write plain-language release notes grouped under `## New`, `## Fixed`, `## Changed` (omit empty groups). Include install instructions for Chrome (`chrome://extensions`) and Firefox (`about:debugging`). Publish with `gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes "<notes>"` and attach the three matching archives.
+Write plain-language release notes grouped under `## New`, `## Fixed`, `## Changed` (omit empty groups). Include Chrome install instructions (`chrome://extensions`) and link the store notes in `docs/store/release-notes.md`. Publish with `gh release create vX.Y.Z --target main --title "vX.Y.Z" --notes "<notes>"` and attach the Chrome zip.
 
 ## Report
 
-Give release URL and attached files. Store submissions remain manual.
+Give release URL and attached file. Store submissions remain manual.
+
+## After store publish
+
+Once the store publishes the version (ask the user if unsure):
+
+- README store badge shows the new version.
+- Store page assets (screenshots, description) are current.
+- An install of the previous version updates cleanly to the new one.
